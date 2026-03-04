@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rush Seed Finder</title>
+<title>Rush Seed Finder v1.6.3</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -68,12 +68,58 @@
   .status-text{font-size:16px;color:var(--text-dim);margin-top:10px;min-height:18px;letter-spacing:0.5px;}
   .hint{font-size:12px;color:var(--text-dim);margin-top:6px;line-height:1.6;}
   .corner-deco{position:fixed;bottom:24px;right:24px;font-size:12px;letter-spacing:2px;color:var(--text-dim);opacity:0.4;z-index:10;}
+
+  /* Result mode toggle */
+  input[name="resultmode"] { display: none; }
+  input[name="resultmode"] + label {
+    flex: 1; text-align: center; padding: 10px 16px;
+    border: 1px solid var(--border); cursor: pointer;
+    font-size: 14px; letter-spacing: 1px; color: var(--text-dim);
+    transition: all 0.2s; margin: 0;
+  }
+  input[name="resultmode"] + label:first-of-type { border-right: none; }
+  input[name="resultmode"]:checked + label {
+    background: var(--accent); color: var(--bg);
+    border-color: var(--accent); font-weight: bold;
+  }
+
+  /* Multi-seed accordion */
+  .multi-result-list { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+  .seed-entry { border: 1px solid var(--border); background: var(--bg); }
+  .seed-entry-header {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+  }
+  .seed-entry-header:hover { background: rgba(0,255,159,0.04); }
+  .seed-num {
+    font-size: 22px; color: var(--accent); font-family: var(--mono); letter-spacing: 1px;
+  }
+  .seed-num-label {
+    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--text-dim); display: block; margin-bottom: 2px;
+  }
+  .seed-meta-wrap { text-align: right; }
+  .seed-match-label {
+    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--text-dim); display: block; margin-bottom: 2px;
+  }
+  .seed-match-num { font-size: 18px; color: var(--text); font-family: var(--mono); }
+  .seed-chevron { font-size: 12px; color: var(--text-dim); transition: transform 0.2s; }
+  .seed-entry.open .seed-chevron { transform: rotate(180deg); }
+  .seed-entry-body { display: none; border-top: 1px solid var(--border); padding: 12px 16px; }
+  .seed-entry.open .seed-entry-body { display: block; }
 </style>
 </head>
 <body>
 <div class="container">
   <header>
-    <div class="eyebrow">// tool v1.5.2</div>
+    <div class="eyebrow">// tool v1.6.3</div>
     <h1>RUSH<br><span>SEED</span><br>FINDER</h1>
     <p class="subtitle">Find or generate level seeds for Neon White Heaven or Hell Rush. Uses the same seeded shuffle as the game engine.</p>
   </header>
@@ -96,6 +142,19 @@
         <label>Search Depth</label>
         <input type="number" id="s-depth" value="10" min="1" max="96">
         <div class="hint">Levels deep to search for your desired levels</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Result Mode</label>
+      <div class="toggle-group" style="margin-bottom:8px;">
+        <input type="radio" name="resultmode" id="mode-first" value="first" checked onchange="toggleResultMode()">
+        <label for="mode-first">First Match</label>
+        <input type="radio" name="resultmode" id="mode-multi" value="multi" onchange="toggleResultMode()">
+        <label for="mode-multi">Find Multiple</label>
+      </div>
+      <div id="maxseeds-wrap" style="display:none;">
+        <input type="number" id="s-maxseeds" value="5" min="2" max="100" style="margin-top:6px;">
+        <div class="hint">Stop after finding this many matching seeds.</div>
       </div>
     </div>
     <div class="field">
@@ -125,10 +184,8 @@
     </div>
     <div class="status-text" id="status-text"></div>
     <div class="result-box" id="search-result">
-      <div class="result-label">Found Seed</div>
-      <div class="result-value" id="result-seed"></div>
-      <div class="result-label" style="margin-top:8px">Level Sequence</div>
-      <div class="sequence-list" id="result-sequence"></div>
+      <div class="result-label" id="search-result-label">Found Seeds</div>
+      <div class="multi-result-list" id="multi-result-list"></div>
     </div>
   </div>
   <div class="tab-panel" id="tab-generate">
@@ -251,7 +308,7 @@
   </div>
 
 </div>
-<div class="corner-deco">SEED ENGINE // OPTIMISED</div>
+<div class="corner-deco">SEED ENGINE // v1.6.3</div>
 <script>
 // ── C# System.Random port ──────────────────────────────────────────────────
 var MBIG = 2147483647;
@@ -301,8 +358,7 @@ var LEVEL_ALIASES = {
   'glort':     'glass port',
   'ttt':       'the third temple',
   'ct':        'the clocktower',
-  'clocktower':'the clocktower',
-  'bucket':        'bouquet',
+  'clocktower':'the clocktower'
 };
 
 function findLevelByName(query) {
@@ -370,15 +426,20 @@ function startSearch() {
   var tLen = targetIndices.length;
   var stopAt = orderMatters ? tLen : searchDepth;
 
+  var multiMode = document.querySelector('input[name="resultmode"]:checked').value === 'multi';
+  var maxSeeds = multiMode ? Math.max(2, parseInt(document.getElementById('s-maxseeds').value) || 5) : 1;
   var MAX_SEED = 2147483647;
   var CHUNK    = 200000;   // seeds per frame — keeps UI at ~16ms chunks
   var seed     = 1;
+  var foundSeeds = [];
   var startTime = Date.now();
 
   searching = true;
   document.getElementById('search-btn').style.display = 'none';
   document.getElementById('stop-btn').style.display   = 'block';
   document.getElementById('search-result').classList.remove('visible');
+  document.getElementById('multi-result-list').innerHTML = '';
+  document.getElementById('search-result-label').textContent = 'Found Seeds';
   document.getElementById('progress-section').classList.add('visible');
   document.getElementById('progress-fill').style.width = '0%';
   document.getElementById('progress-pct').textContent  = '0%';
@@ -436,10 +497,14 @@ function startSearch() {
       };
 
       if (match) {
-        searchDone();
         var order = fullShuffle(numLevels, seed);
-        showFound(seed, order, targetSet);
-        return;
+        foundSeeds.push({ seed: seed, order: order });
+        addSeedResult(seed, order, targetSet, foundSeeds.length);
+        if (foundSeeds.length >= maxSeeds) {
+          searchDone();
+          setStatus('Found ' + foundSeeds.length + ' seed' + (foundSeeds.length > 1 ? 's' : '') + '.');
+          return;
+        }
       }
     }
 
@@ -458,7 +523,11 @@ function startSearch() {
 
     if (seed > MAX_SEED) {
       searchDone();
-      showSearchError('No seed found for these parameters.');
+      if (foundSeeds.length === 0) {
+        showSearchError('No seeds found for these parameters.');
+      } else {
+        setStatus('Search complete. Found ' + foundSeeds.length + ' seed' + (foundSeeds.length > 1 ? 's' : '') + '.');
+      }
       return;
     }
 
@@ -481,20 +550,49 @@ function searchDone() {
   document.getElementById('progress-section').classList.remove('visible');
 }
 
-function showFound(seed, order, targetSet) {
-  document.getElementById('result-seed').textContent  = seed;
-  document.getElementById('result-seed').className    = 'result-value';
-  var list = document.getElementById('result-sequence');
-  list.innerHTML = '';
+function addSeedResult(seed, order, targetSet, index) {
+  var list = document.getElementById('multi-result-list');
+
+  var entry = document.createElement('div');
+  entry.className = 'seed-entry';
+
+  // Header (always visible, click to expand)
+  var header = document.createElement('div');
+  header.className = 'seed-entry-header';
+  header.innerHTML =
+    '<div><span class="seed-num-label">Seed</span><span class="seed-num">' + seed + '</span></div>' +
+    '<div class="seed-meta-wrap"><span class="seed-match-label">Match</span><span class="seed-match-num">#' + index + '</span></div>' +
+    '<span class="seed-chevron">&#9660;</span>';
+  header.onclick = function() {
+    entry.classList.toggle('open');
+  };
+
+  // Body (level sequence, hidden until expanded)
+  var body = document.createElement('div');
+  body.className = 'seed-entry-body';
+  var seqList = document.createElement('div');
+  seqList.className = 'sequence-list';
   for (var pos = 0; pos < order.length; pos++) {
     var idx = order[pos];
     var div = document.createElement('div');
     div.className = 'seq-item' + (targetSet[idx] ? ' highlighted' : '');
     div.innerHTML = '<span class="num">'+(pos+1)+'.</span> '+levelLabel(idx);
-    list.appendChild(div);
+    seqList.appendChild(div);
   }
+  body.appendChild(seqList);
+
+  entry.appendChild(header);
+  entry.appendChild(body);
+
+  // Auto-expand the first result
+  if (index === 1) entry.classList.add('open');
+
+  list.appendChild(entry);
+
+  // Update label count and show box
+  document.getElementById('search-result-label').textContent =
+    'Found ' + index + ' seed' + (index > 1 ? 's' : '');
   document.getElementById('search-result').classList.add('visible');
-  setStatus('Found at seed ' + seed);
 }
 
 function showSearchError(msg) {
@@ -741,6 +839,11 @@ function standardizeSplits() {
   document.getElementById('std-result').classList.add('visible');
 }
 
+
+function toggleResultMode() {
+  var multi = document.querySelector('input[name="resultmode"]:checked').value === 'multi';
+  document.getElementById('maxseeds-wrap').style.display = multi ? 'block' : 'none';
+}
 
 function setStatus(msg) { document.getElementById('status-text').textContent = msg; }
 </script>
