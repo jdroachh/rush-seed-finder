@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rush Seed Finder v1.6.4</title>
+<title>Rush Seed Finder v1.6.6</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -126,7 +126,7 @@
 <body>
 <div class="container">
   <header>
-    <div class="eyebrow">// tool v1.6.4</div>
+    <div class="eyebrow">// tool v1.6.6</div>
     <h1>RUSH<br><span>SEED</span><br>FINDER</h1>
     <p class="subtitle">Find or generate level seeds for Neon White Heaven or Hell Rush. Uses the same seeded shuffle as the game engine.</p>
   </header>
@@ -315,7 +315,7 @@
   </div>
 
 </div>
-<div class="corner-deco">SEED ENGINE // v1.6.4</div>
+<div class="corner-deco">SEED ENGINE // v1.6.6</div>
 <script>
 // ── C# System.Random port ──────────────────────────────────────────────────
 var MBIG = 2147483647;
@@ -391,6 +391,7 @@ function parseLevels(input, numLevels) {
   var parts = input.split(',').map(function(s){return s.trim();}).filter(Boolean);
   if (!parts.length) return {error:'No levels entered.'};
   var result = [];
+  var seen = {};
   var isNum = parts.every(function(p){return /^\d+$/.test(p);});
   for (var i = 0; i < parts.length; i++) {
     var idx;
@@ -402,6 +403,10 @@ function parseLevels(input, numLevels) {
       if (found.error) return { error: found.error };
       idx = found.idx;
     }
+    if (seen[idx] !== undefined) {
+      return { error: 'Duplicate level detected: "' + LEVEL_NAMES[idx] + '" appears more than once (check entries #' + (seen[idx]+1) + ' and #' + (i+1) + ').' };
+    }
+    seen[idx] = i;
     result.push(idx);
   }
   return {indices: result};
@@ -627,9 +632,13 @@ function addSeedResult(seed, order, targetSet, index) {
 }
 
 function showSearchError(msg) {
-  document.getElementById('result-seed').className   = 'result-value error';
-  document.getElementById('result-seed').textContent = msg;
-  document.getElementById('result-sequence').innerHTML = '';
+  var list = document.getElementById('multi-result-list');
+  list.innerHTML = '';
+  var errEl = document.createElement('div');
+  errEl.style.cssText = 'font-size:14px;color:var(--accent2);padding:12px 4px;line-height:1.6;';
+  errEl.textContent = msg;
+  list.appendChild(errEl);
+  document.getElementById('search-result-label').textContent = 'No Results';
   document.getElementById('search-result').classList.add('visible');
 }
 
