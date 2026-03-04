@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rush Seed Finder v1.6.3</title>
+<title>Rush Seed Finder v1.6.4</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -88,7 +88,7 @@
   .seed-entry { border: 1px solid var(--border); background: var(--bg); }
   .seed-entry-header {
     display: grid;
-    grid-template-columns: 1fr auto auto;
+    grid-template-columns: 1fr auto auto auto;
     align-items: center;
     gap: 16px;
     padding: 12px 16px;
@@ -111,6 +111,13 @@
   }
   .seed-match-num { font-size: 18px; color: var(--text); font-family: var(--mono); }
   .seed-chevron { font-size: 12px; color: var(--text-dim); transition: transform 0.2s; }
+  .seed-copy-btn {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+    background: none; border: 1px solid var(--border); color: var(--text-dim);
+    padding: 4px 10px; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  }
+  .seed-copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .seed-copy-btn.copied { border-color: var(--accent); color: var(--accent); }
   .seed-entry.open .seed-chevron { transform: rotate(180deg); }
   .seed-entry-body { display: none; border-top: 1px solid var(--border); padding: 12px 16px; }
   .seed-entry.open .seed-entry-body { display: block; }
@@ -119,7 +126,7 @@
 <body>
 <div class="container">
   <header>
-    <div class="eyebrow">// tool v1.6.3</div>
+    <div class="eyebrow">// tool v1.6.4</div>
     <h1>RUSH<br><span>SEED</span><br>FINDER</h1>
     <p class="subtitle">Find or generate level seeds for Neon White Heaven or Hell Rush. Uses the same seeded shuffle as the game engine.</p>
   </header>
@@ -308,7 +315,7 @@
   </div>
 
 </div>
-<div class="corner-deco">SEED ENGINE // v1.6.3</div>
+<div class="corner-deco">SEED ENGINE // v1.6.4</div>
 <script>
 // ── C# System.Random port ──────────────────────────────────────────────────
 var MBIG = 2147483647;
@@ -562,8 +569,32 @@ function addSeedResult(seed, order, targetSet, index) {
   header.innerHTML =
     '<div><span class="seed-num-label">Seed</span><span class="seed-num">' + seed + '</span></div>' +
     '<div class="seed-meta-wrap"><span class="seed-match-label">Match</span><span class="seed-match-num">#' + index + '</span></div>' +
+    '<button class="seed-copy-btn" data-seed="' + seed + '">COPY</button>' +
     '<span class="seed-chevron">&#9660;</span>';
-  header.onclick = function() {
+  header.onclick = function(e) {
+    if (e.target.classList.contains('seed-copy-btn')) {
+      var btn = e.target;
+      var seedVal = btn.getAttribute('data-seed');
+      try {
+        navigator.clipboard.writeText(seedVal).then(function() {
+          btn.textContent = 'COPIED';
+          btn.classList.add('copied');
+          setTimeout(function() { btn.textContent = 'COPY'; btn.classList.remove('copied'); }, 1500);
+        });
+      } catch(err) {
+        // Fallback for older browsers
+        var ta = document.createElement('textarea');
+        ta.value = seedVal;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        btn.textContent = 'COPIED';
+        btn.classList.add('copied');
+        setTimeout(function() { btn.textContent = 'COPY'; btn.classList.remove('copied'); }, 1500);
+      }
+      return;
+    }
     entry.classList.toggle('open');
   };
 
