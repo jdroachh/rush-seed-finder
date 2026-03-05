@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rush Seed Finder v1.6.6</title>
+<title>Rush Seed Finder v1.7.0</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -121,12 +121,42 @@
   .seed-entry.open .seed-chevron { transform: rotate(180deg); }
   .seed-entry-body { display: none; border-top: 1px solid var(--border); padding: 12px 16px; }
   .seed-entry.open .seed-entry-body { display: block; }
+
+  /* Force First Level */
+  .force-first-wrap { display: none; margin-top: 8px; }
+  .force-first-wrap.visible { display: block; }
+  .checkbox-row { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+  .checkbox-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+  .checkbox-row span { font-size: 14px; color: var(--text); letter-spacing: 0.5px; }
+/* Small utility buttons (cache bar + copy) */
+  .btn-small {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-small:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-small.danger:hover { border-color: var(--accent2); color: var(--accent2); }
+  .cache-bar { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .cache-status { font-size: 11px; letter-spacing: 1px; color: var(--text-dim); }
+  .cache-status.saved { color: var(--accent); }
+  .splits-result { max-height: 400px; overflow-y: auto; }
+  .splits-result::-webkit-scrollbar { width: 4px; }
+  .splits-result::-webkit-scrollbar-track { background: var(--border); }
+  .splits-result::-webkit-scrollbar-thumb { background: var(--accent); }
 </style>
 </head>
 <body>
 <div class="container">
   <header>
-    <div class="eyebrow">// tool v1.6.6</div>
+    <div class="eyebrow">// tool v1.7.0</div>
     <h1>RUSH<br><span>SEED</span><br>FINDER</h1>
     <p class="subtitle">Find or generate level seeds for Neon White Heaven or Hell Rush. Uses the same seeded shuffle as the game engine.</p>
   </header>
@@ -177,6 +207,17 @@
       <label>Desired Starting Levels</label>
       <input type="text" id="s-levels" placeholder="e.g. The Third Temple, Absolution, The Clocktower">
       <div class="hint">Comma-separated level names or numbers (1-indexed). Case insensitive.</div>
+    </div>
+    <div class="field">
+      <label>Force First Level</label>
+      <label class="checkbox-row" for="ffl-checkbox">
+        <input type="checkbox" id="ffl-checkbox" onchange="toggleForceFirst()">
+        <span>Pin a specific level to position 1</span>
+      </label>
+      <div class="force-first-wrap" id="ffl-wrap">
+        <input type="text" id="ffl-level" placeholder="e.g. Absolution, TTT, Rico" style="margin-top:8px;">
+        <div class="hint">This level must appear first. Desired Starting Levels must still appear within Search Depth.</div>
+      </div>
     </div>
     <button class="btn" id="search-btn" onclick="startSearch()">FIND SEED</button>
     <button class="btn btn-danger" id="stop-btn" onclick="stopSearch()" style="display:none">STOP SEARCH</button>
@@ -315,7 +356,7 @@
   </div>
 
 </div>
-<div class="corner-deco">SEED ENGINE // v1.6.6</div>
+<div class="corner-deco">SEED ENGINE // v1.7.0</div>
 <script>
 // ── C# System.Random port ──────────────────────────────────────────────────
 var MBIG = 2147483647;
@@ -432,6 +473,22 @@ function startSearch() {
   var targetIndices = parsed.indices;
   if (searchDepth < targetIndices.length) searchDepth = targetIndices.length;
 
+  // Force First Level
+  var forceFirstEnabled = document.getElementById('ffl-checkbox').checked;
+  var forceFirstIdx = -1;
+  if (forceFirstEnabled) {
+    var fflInput = document.getElementById('ffl-level').value.trim();
+    if (!fflInput) { showSearchError('Force First Level is enabled but no level was entered.'); return; }
+    var fflParsed = findLevelByName(fflInput);
+    if (fflParsed.error) { showSearchError('Force First Level: ' + fflParsed.error); return; }
+    forceFirstIdx = fflParsed.idx;
+    // Warn if forced level is also in Desired Starting Levels
+    if (targetIndices.indexOf(forceFirstIdx) !== -1) {
+      showSearchError('Force First Level "' + LEVEL_NAMES[forceFirstIdx] + '" is already listed in Desired Starting Levels. Remove it from one or the other.');
+      return;
+    }
+  }
+
   // Build a plain-object set for O(1) lookup inside the hot loop
   var targetSet = {};
   for (var i = 0; i < targetIndices.length; i++) targetSet[targetIndices[i]] = true;
@@ -497,21 +554,30 @@ function startSearch() {
           if (_arr[i] !== targetIndices[i]) { match = false; break; }
           if (i === tLen - 1) break;
         }
+        // Force first: bail immediately if position 0 isn't the forced level
+        if (forceFirstEnabled && i === 0) {
+          if (_arr[0] !== forceFirstIdx) { match = false; break; }
+        }
         // Unordered: run the full shuffle, check positions afterwards
       }
 
       if (!orderMatters) {
-        foundCount = 0;
-        for (var ci = 0; ci < searchDepth; ci++) {
-          if (targetSet[_arr[ci]]) foundCount++;
+        // Check force-first constraint
+        if (forceFirstEnabled && _arr[0] !== forceFirstIdx) {
+          match = false;
+        } else {
+          foundCount = 0;
+          for (var ci = 0; ci < searchDepth; ci++) {
+            if (targetSet[_arr[ci]]) foundCount++;
+          }
+          match = (foundCount === tLen);
         }
-        match = (foundCount === tLen);
       };
 
       if (match) {
         var order = fullShuffle(numLevels, seed);
         foundSeeds.push({ seed: seed, order: order });
-        addSeedResult(seed, order, targetSet, foundSeeds.length);
+        addSeedResult(seed, order, targetSet, foundSeeds.length, forceFirstEnabled ? forceFirstIdx : -1);
         if (foundSeeds.length >= maxSeeds) {
           searchDone();
           setStatus('Found ' + foundSeeds.length + ' seed' + (foundSeeds.length > 1 ? 's' : '') + '.');
@@ -562,7 +628,7 @@ function searchDone() {
   document.getElementById('progress-section').classList.remove('visible');
 }
 
-function addSeedResult(seed, order, targetSet, index) {
+function addSeedResult(seed, order, targetSet, index, forceIdx) {
   var list = document.getElementById('multi-result-list');
 
   var entry = document.createElement('div');
@@ -611,7 +677,7 @@ function addSeedResult(seed, order, targetSet, index) {
   for (var pos = 0; pos < order.length; pos++) {
     var idx = order[pos];
     var div = document.createElement('div');
-    div.className = 'seq-item' + (targetSet[idx] ? ' highlighted' : '');
+    div.className = 'seq-item' + (targetSet[idx] || idx === forceIdx ? ' highlighted' : '');
     div.innerHTML = '<span class="num">'+(pos+1)+'.</span> '+levelLabel(idx);
     seqList.appendChild(div);
   }
@@ -883,6 +949,13 @@ function standardizeSplits() {
 function toggleResultMode() {
   var multi = document.querySelector('input[name="resultmode"]:checked').value === 'multi';
   document.getElementById('maxseeds-wrap').style.display = multi ? 'block' : 'none';
+}
+
+function toggleForceFirst() {
+  var enabled = document.getElementById('ffl-checkbox').checked;
+  var wrap = document.getElementById('ffl-wrap');
+  wrap.classList.toggle('visible', enabled);
+  if (!enabled) document.getElementById('ffl-level').value = '';
 }
 
 function setStatus(msg) { document.getElementById('status-text').textContent = msg; }
