@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rush Seed Finder v2.0.0</title>
+<title>Rush Seed Finder v2.0.5</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -158,7 +158,7 @@
 <body>
 <div class="container">
   <header>
-    <div class="eyebrow">// tool v2.0.0</div>
+    <div class="eyebrow">// tool v2.0.5</div>
     <h1>RUSH<br><span>SEED</span><br>FINDER</h1>
     <p class="subtitle">Find or generate level seeds for Neon White Heaven or Hell Rush. Uses the same seeded shuffle as the game engine.</p>
   </header>
@@ -265,18 +265,27 @@
     </div>
   </div>
   <div class="tab-panel" id="tab-splits">
+    <div class="field" style="margin-bottom:20px;">
+      <label>Rush Name</label>
+            <select id="sp-rush" onchange="onSplitsRushChange()">
+          <option value="96">White / Mikey (96 levels)</option>
+          <option value="violet">Violet (8 levels)</option>
+          <option value="red">Red (8 levels)</option>
+          <option value="yellow">Yellow (8 levels)</option>
+        </select>
+    </div>
     <div class="row">
       <div class="field">
         <label>Gold Splits</label>
         <textarea id="sp-gold" rows="6" placeholder="Paste one time per line&#10;e.g.&#10;17.993&#10;1:20.730&#10;45.012" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:16px;padding:12px 16px;outline:none;resize:vertical;transition:border-color 0.2s;"></textarea>
         <div class="hint">Best individual level times. One per line.</div>
-        <div class="hint" style="color:var(--accent2);margin-top:4px;">Paste times in standard level order (Movement first, Absolution last).</div>
+        <div class="hint" id="sp-gold-hint" style="color:var(--accent2);margin-top:4px;">Paste times in standard level order (Movement first, Absolution last).</div>
       </div>
       <div class="field">
         <label>Segment Splits</label>
         <textarea id="sp-seg" rows="6" placeholder="Paste one time per line&#10;e.g.&#10;17.993&#10;1:20.730&#10;45.012" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:16px;padding:12px 16px;outline:none;resize:vertical;transition:border-color 0.2s;"></textarea>
         <div class="hint">Cumulative or segment run times. One per line.</div>
-        <div class="hint" style="color:var(--accent2);margin-top:4px;">Paste times in standard level order (Movement first, Absolution last).</div>
+        <div class="hint" id="sp-seg-hint" style="color:var(--accent2);margin-top:4px;">Paste times in standard level order (Movement first, Absolution last).</div>
       </div>
     </div>
     <div class="cache-bar">
@@ -289,6 +298,7 @@
       <label>Seed Number</label>
       <input type="number" id="sp-seed" placeholder="e.g. 58685" min="1">
     </div>
+    <div id="sp-error" style="display:none;color:var(--accent2);font-size:14px;margin-top:12px;line-height:1.6;padding:10px 14px;border:1px solid var(--accent2);"></div>
     <button class="btn" onclick="generateSplits()">GENERATE SPLITS</button>
     <div class="result-box" id="splits-result">
       <div class="result-label">Reordered Splits &mdash; Seed <span id="splits-seed-display"></span></div>
@@ -317,18 +327,27 @@
   </div>
 
   <div class="tab-panel" id="tab-standardize">
+    <div class="field" style="margin-bottom:20px;">
+      <label>Rush Name</label>
+            <select id="std-rush" onchange="onStdRushChange()">
+          <option value="96">White / Mikey (96 levels)</option>
+          <option value="violet">Violet (8 levels)</option>
+          <option value="red">Red (8 levels)</option>
+          <option value="yellow">Yellow (8 levels)</option>
+        </select>
+    </div>
     <div class="row">
       <div class="field">
         <label>Gold Splits</label>
         <textarea id="std-gold" rows="6" placeholder="Paste one time per line&#10;e.g.&#10;17.993&#10;1:20.730&#10;45.012" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:16px;padding:12px 16px;outline:none;resize:vertical;transition:border-color 0.2s;"></textarea>
         <div class="hint">Best individual level times. One per line.</div>
-        <div class="hint" style="color:var(--accent2);margin-top:4px;">Paste times in seed order (the order your seed plays levels).</div>
+        <div class="hint" id="std-gold-hint" style="color:var(--accent2);margin-top:4px;">Paste times in seed order (the order your seed plays levels).</div>
       </div>
       <div class="field">
         <label>Segment Splits</label>
         <textarea id="std-seg" rows="6" placeholder="Paste one time per line&#10;e.g.&#10;17.993&#10;1:20.730&#10;45.012" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:16px;padding:12px 16px;outline:none;resize:vertical;transition:border-color 0.2s;"></textarea>
         <div class="hint">Cumulative or segment run times. One per line.</div>
-        <div class="hint" style="color:var(--accent2);margin-top:4px;">Paste times in seed order (the order your seed plays levels).</div>
+        <div class="hint" id="std-seg-hint" style="color:var(--accent2);margin-top:4px;">Paste times in seed order (the order your seed plays levels).</div>
       </div>
     </div>
     <div class="cache-bar">
@@ -341,6 +360,7 @@
       <label>Seed Number</label>
       <input type="number" id="std-seed" placeholder="e.g. 58685" min="1">
     </div>
+    <div id="std-error" style="display:none;color:var(--accent2);font-size:14px;margin-top:12px;line-height:1.6;padding:10px 14px;border:1px solid var(--accent2);"></div>
     <button class="btn" onclick="standardizeSplits()">STANDARDIZE SPLITS</button>
     <div class="result-box" id="std-result">
       <div class="result-label">Standardized Splits &mdash; Seed <span id="std-seed-display"></span></div>
@@ -362,7 +382,7 @@
   </div>
 
 </div>
-<div class="corner-deco">SEED ENGINE // v2.0.0</div>
+<div class="corner-deco">SEED ENGINE // v2.0.5</div>
 <script>
 // ── C# System.Random port ──────────────────────────────────────────────────
 var MBIG = 2147483647;
@@ -411,6 +431,13 @@ var RUSH_LEVELS = {
 };
 
 // Active level list (set when rush changes)
+var RUSH_DISPLAY_NAMES = { '96': 'White / Mikey', 'violet': 'Violet', 'red': 'Red', 'yellow': 'Yellow' };
+var RUSH_STANDARD_HINT = {
+  '96':     'Paste times in standard level order (Movement first, Absolution last).',
+  'violet': 'Paste times in standard level order (Doghouse first, Resident Saw II last).',
+  'red':    'Paste times in standard level order (Elevate Traversal I first, Book of Life Traversal last).',
+  'yellow': 'Paste times in standard level order (Sunset Flip Powerbomb first, Rocket last).'
+};
 var LEVEL_NAMES = RUSH_LEVELS["96"];
 var LEVEL_MAP = {};
 function rebuildLevelMap() {
@@ -826,16 +853,32 @@ function setCacheStatus(msg, ok) {
 
 function generateSplits() {
   var seed = parseInt(document.getElementById('sp-seed').value);
-  if (!seed || seed < 1) { alert('Please enter a valid seed number.'); return; }
+  showSplitsError('sp', '');
+  if (!seed || seed < 1) { showSplitsError('sp', 'Please enter a valid seed number.'); return; }
 
   var goldTimes = parseSplitTimes(document.getElementById('sp-gold').value);
   var segTimes  = parseSplitTimes(document.getElementById('sp-seg').value);
 
   if (!goldTimes.length && !segTimes.length) {
-    alert('Please paste at least Gold or Segment splits.'); return;
+    showSplitsError('sp', 'Please paste at least Gold or Segment splits.'); return;
   }
 
-  var order = fullShuffle(96, seed);
+  var spRushKey = document.getElementById('sp-rush').value;
+  var spNumLevels = (spRushKey === 'violet' || spRushKey === 'red' || spRushKey === 'yellow') ? 8 : 96;
+  var spRushName = RUSH_DISPLAY_NAMES[spRushKey] || spRushKey;
+
+  // Validate line counts BEFORE doing anything else
+  if (goldTimes.length && goldTimes.length !== spNumLevels) {
+    showSplitsError('sp', 'Gold Splits has ' + goldTimes.length + ' line' + (goldTimes.length !== 1 ? 's' : '') + ', but ' + spRushName + ' rush expects ' + spNumLevels + '. Please check your splits and try again.');
+    return;
+  }
+  if (segTimes.length && segTimes.length !== spNumLevels) {
+    showSplitsError('sp', 'Segment Splits has ' + segTimes.length + ' line' + (segTimes.length !== 1 ? 's' : '') + ', but ' + spRushName + ' rush expects ' + spNumLevels + '. Please check your splits and try again.');
+    return;
+  }
+
+  setRush(spRushKey);
+  var order = fullShuffle(spNumLevels, seed);
   document.getElementById('splits-seed-display').textContent = seed;
 
   // Build reordered output arrays — one time per line, in seed level order
@@ -942,10 +985,25 @@ function standardizeSplits() {
   // Get the level order for this seed
   // order[pos] = levelIdx, so order[0] is the first level played
   // We need the inverse: given a levelIdx, what position was it played at?
-  var order = fullShuffle(96, seed);
+  var stdRushKey = document.getElementById('std-rush').value;
+  var stdNumLevels = (stdRushKey === 'violet' || stdRushKey === 'red' || stdRushKey === 'yellow') ? 8 : 96;
+  var stdRushName = RUSH_DISPLAY_NAMES[stdRushKey] || stdRushKey;
+
+  // Validate line counts BEFORE doing anything else
+  if (goldTimes.length && goldTimes.length !== stdNumLevels) {
+    showSplitsError('std', 'Gold Splits has ' + goldTimes.length + ' line' + (goldTimes.length !== 1 ? 's' : '') + ', but ' + stdRushName + ' rush expects ' + stdNumLevels + '. Please check your splits and try again.');
+    return;
+  }
+  if (segTimes.length && segTimes.length !== stdNumLevels) {
+    showSplitsError('std', 'Segment Splits has ' + segTimes.length + ' line' + (segTimes.length !== 1 ? 's' : '') + ', but ' + stdRushName + ' rush expects ' + stdNumLevels + '. Please check your splits and try again.');
+    return;
+  }
+
+  setRush(stdRushKey);
+  var order = fullShuffle(stdNumLevels, seed);
 
   // Build inverse map: seedPosition[levelIdx] = position in seed order (0-indexed)
-  var seedPosition = new Array(96);
+  var seedPosition = new Array(stdNumLevels);
   for (var pos = 0; pos < order.length; pos++) {
     seedPosition[order[pos]] = pos;
   }
@@ -1039,6 +1097,23 @@ var RUSH_PLACEHOLDERS = {
   'yellow': 'e.g. SFP, BM, Rocket'
 };
 
+function onSplitsRushChange() {
+  var rushKey = document.getElementById('sp-rush').value;
+  var hint = RUSH_STANDARD_HINT[rushKey] || RUSH_STANDARD_HINT['96'];
+  document.getElementById('sp-gold-hint').textContent = hint;
+  document.getElementById('sp-seg-hint').textContent  = hint;
+}
+
+function onStdRushChange() {
+  // Seed-order hint stays the same wording regardless of rush
+  // but update to clarify which rush's seed order is expected
+  var rushKey = document.getElementById('std-rush').value;
+  var rushName = RUSH_DISPLAY_NAMES[rushKey] || 'selected rush';
+  var hint = 'Paste times in seed order (the order your ' + rushName + ' seed plays levels).';
+  document.getElementById('std-gold-hint').textContent = hint;
+  document.getElementById('std-seg-hint').textContent  = hint;
+}
+
 function updatePlaceholders(rushKey) {
   var ph = RUSH_PLACEHOLDERS[rushKey] || RUSH_PLACEHOLDERS['96'];
   document.getElementById('s-levels').placeholder = ph;
@@ -1063,6 +1138,13 @@ function toggleForceFirst() {
   var wrap = document.getElementById('ffl-wrap');
   wrap.classList.toggle('visible', enabled);
   if (!enabled) document.getElementById('ffl-level').value = '';
+}
+
+function showSplitsError(tabId, msg) {
+  var el = document.getElementById(tabId + '-error');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
 }
 
 function setStatus(msg) { document.getElementById('status-text').textContent = msg; }
