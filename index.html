@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rush Seed Finder v1.7.0</title>
+<title>Rush Seed Finder v2.0.0</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -70,6 +70,8 @@
   .corner-deco{position:fixed;bottom:24px;right:24px;font-size:12px;letter-spacing:2px;color:var(--text-dim);opacity:0.4;z-index:10;}
 
   /* Result mode toggle */
+  input[name="order"] { display: none; }
+  input[name="order"]:checked + label { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: bold; }
   input[name="resultmode"] { display: none; }
   input[name="resultmode"] + label {
     flex: 1; text-align: center; padding: 10px 16px;
@@ -156,7 +158,7 @@
 <body>
 <div class="container">
   <header>
-    <div class="eyebrow">// tool v1.7.0</div>
+    <div class="eyebrow">// tool v2.0.0</div>
     <h1>RUSH<br><span>SEED</span><br>FINDER</h1>
     <p class="subtitle">Find or generate level seeds for Neon White Heaven or Hell Rush. Uses the same seeded shuffle as the game engine.</p>
   </header>
@@ -170,12 +172,14 @@
     <div class="row">
       <div class="field">
         <label>Rush Name</label>
-        <select id="s-rush">
+        <select id="s-rush" onchange="onRushChange('s')">
           <option value="96">White / Mikey (96 levels)</option>
-          <!-- V2: <option value="8">Yellow / Violet / Red (8 levels)</option> -->
+          <option value="violet">Violet (8 levels)</option>
+          <option value="red">Red (8 levels)</option>
+          <option value="yellow">Yellow (8 levels)</option>
         </select>
       </div>
-      <div class="field">
+      <div class="field" id="search-depth-field">
         <label>Search Depth</label>
         <input type="number" id="s-depth" value="10" min="1" max="96">
         <div class="hint">Levels deep to search for your desired levels</div>
@@ -194,13 +198,13 @@
         <div class="hint">Stop after finding this many matching seeds.</div>
       </div>
     </div>
-    <div class="field">
+    <div class="field" id="order-matters-field" style="display:none;">
       <label>Order Matters?</label>
-      <div class="toggle-group">
-        <input type="radio" name="order" id="o-no" value="0" checked>
-        <label for="o-no">No &mdash; Any Order</label>
-        <!-- V2: <input type="radio" name="order" id="o-yes" value="1">
-        <label for="o-yes">Yes &mdash; Exact Order</label> -->
+      <div class="toggle-group" style="display:flex;">
+        <input type="radio" name="order" id="o-no" value="0" checked onchange="onOrderChange()">
+        <label for="o-no" style="flex:1;text-align:center;padding:10px;border:1px solid var(--border);cursor:pointer;font-size:14px;letter-spacing:1px;transition:all 0.2s;margin:0;border-right:none;">No &mdash; Any Order</label>
+        <input type="radio" name="order" id="o-yes" value="1" onchange="onOrderChange()">
+        <label for="o-yes" style="flex:1;text-align:center;padding:10px;border:1px solid var(--border);cursor:pointer;font-size:14px;letter-spacing:1px;transition:all 0.2s;margin:0;">Yes &mdash; Exact Order</label>
       </div>
     </div>
     <div class="field">
@@ -208,7 +212,7 @@
       <input type="text" id="s-levels" placeholder="e.g. The Third Temple, Absolution, The Clocktower">
       <div class="hint">Comma-separated level names or numbers (1-indexed). Case insensitive.</div>
     </div>
-    <div class="field">
+    <div class="field" id="force-first-field">
       <label>Force First Level</label>
       <label class="checkbox-row" for="ffl-checkbox">
         <input type="checkbox" id="ffl-checkbox" onchange="toggleForceFirst()">
@@ -240,9 +244,11 @@
     <div class="row">
       <div class="field">
         <label>Rush Name</label>
-        <select id="g-rush">
+        <select id="g-rush" onchange="onRushChange('g')">
           <option value="96">White / Mikey (96 levels)</option>
-          <!-- V2: <option value="8">Yellow / Violet / Red (8 levels)</option> -->
+          <option value="violet">Violet (8 levels)</option>
+          <option value="red">Red (8 levels)</option>
+          <option value="yellow">Yellow (8 levels)</option>
         </select>
       </div>
       <div class="field">
@@ -356,7 +362,7 @@
   </div>
 
 </div>
-<div class="corner-deco">SEED ENGINE // v1.7.0</div>
+<div class="corner-deco">SEED ENGINE // v2.0.0</div>
 <script>
 // ── C# System.Random port ──────────────────────────────────────────────────
 var MBIG = 2147483647;
@@ -396,17 +402,51 @@ function fullShuffle(numLevels, seed) {
 }
 
 // ── Level names ────────────────────────────────────────────────────────────
-var LEVEL_NAMES = ["Movement","Pummel","Gunner","Cascade","Elevate","Bounce","Purify","Climb","Fasttrack","Glass Port","Take Flight","Godspeed","Dasher","Thrasher","Outstretched","Smackdown","Catwalk","Fastlane","Distinguish","Dancer","Guardian","Stomp","Jumper","Dash Tower","Descent","Driller","Canals","Sprint","Mountain","Superkinetic","Arrival","Forgotten City","The Clocktower","Fireball","Ringer","Cleaner","Warehouse","Boom","Streets","Steps","Demolition","Arcs","Apartment","Hanging Gardens","Tangled","Waterworks","Killswitch","Falling","Shocker","Bouquet","Prepare","Triptrack","Race","Bubble","Shield","Overlook","Pop","Minefield","Mimic","Trigger","Greenhouse","Sweep","Fuse","Heaven's Edge","Zipline","Swing","Chute","Crash","Ascent","Straightaway","Firecracker","Streak","Mirror","Escalation","Bolt","Godstreak","Plunge","Mayhem","Barrage","Estate","Trapwire","Ricochet","Fortress","Holy Ground","The Third Temple","Spree","Breakthrough","Glide","Closer","Hike","Switch","Access","Congregation","Sequence","Marathon","Absolution"];
+// ── Level name registries per rush ────────────────────────────────────────
+var RUSH_LEVELS = {
+  "96": ["Movement","Pummel","Gunner","Cascade","Elevate","Bounce","Purify","Climb","Fasttrack","Glass Port","Take Flight","Godspeed","Dasher","Thrasher","Outstretched","Smackdown","Catwalk","Fastlane","Distinguish","Dancer","Guardian","Stomp","Jumper","Dash Tower","Descent","Driller","Canals","Sprint","Mountain","Superkinetic","Arrival","Forgotten City","The Clocktower","Fireball","Ringer","Cleaner","Warehouse","Boom","Streets","Steps","Demolition","Arcs","Apartment","Hanging Gardens","Tangled","Waterworks","Killswitch","Falling","Shocker","Bouquet","Prepare","Triptrack","Race","Bubble","Shield","Overlook","Pop","Minefield","Mimic","Trigger","Greenhouse","Sweep","Fuse","Heaven's Edge","Zipline","Swing","Chute","Crash","Ascent","Straightaway","Firecracker","Streak","Mirror","Escalation","Bolt","Godstreak","Plunge","Mayhem","Barrage","Estate","Trapwire","Ricochet","Fortress","Holy Ground","The Third Temple","Spree","Breakthrough","Glide","Closer","Hike","Switch","Access","Congregation","Sequence","Marathon","Absolution"],
+  "violet": ["Doghouse","Choker","Chain","Hellavator","Razor","All Seeing Eye","Resident Saw I","Resident Saw II"],
+  "red": ["Elevate Traversal I","Elevate Traversal II","Purify Traversal","Godspeed Traversal","Stomp Traversal","Fireball Traversal","Dominion Traversal","Book of Life Traversal"],
+  "yellow": ["Sunset Flip Powerbomb","Balloon Mountain","Climbing Gym","Fisherman Suplex","STF","Arena","Attitude Adjustment","Rocket"]
+};
+
+// Active level list (set when rush changes)
+var LEVEL_NAMES = RUSH_LEVELS["96"];
 var LEVEL_MAP = {};
-for (var i = 0; i < LEVEL_NAMES.length; i++) LEVEL_MAP[LEVEL_NAMES[i].toLowerCase()] = i;
+function rebuildLevelMap() {
+  LEVEL_MAP = {};
+  for (var i = 0; i < LEVEL_NAMES.length; i++) LEVEL_MAP[LEVEL_NAMES[i].toLowerCase()] = i;
+}
+rebuildLevelMap();
+
+function setRush(rushKey) {
+  LEVEL_NAMES = RUSH_LEVELS[rushKey] || RUSH_LEVELS["96"];
+  rebuildLevelMap();
+}
+
 function levelLabel(i) { return LEVEL_NAMES[i] || ('Level '+(i+1)); }
 
 // Shorthand aliases
 var LEVEL_ALIASES = {
-  'glort':     'glass port',
-  'ttt':       'the third temple',
-  'ct':        'the clocktower',
-  'clocktower':'the clocktower'
+  'glort':           'glass port',
+  'ttt':             'the third temple',
+  'ct':              'the clocktower',
+  'clocktower':      'the clocktower',
+  'sfp':             'sunset flip powerbomb',
+  'bm':              'balloon mountain',
+  'cg':              'climbing gym',
+  'fish sup':        'fisherman suplex',
+  'fish soup':       'fisherman suplex',
+  'eti':             'elevate traversal i',
+  'et1':             'elevate traversal i',
+  'etii':            'elevate traversal ii',
+  'et2':             'elevate traversal ii',
+  'boof trav':       'book of life traversal',
+  'ase':             'all seeing eye',
+  'rsi':             'resident saw i',
+  'rs1':             'resident saw i',
+  'rsii':            'resident saw ii',
+  'rs2':             'resident saw ii'
 };
 
 function findLevelByName(query) {
@@ -462,7 +502,9 @@ var _SA  = new Int32Array(56);
 var _arr = new Int32Array(96); // max 96 levels
 
 function startSearch() {
-  var numLevels   = parseInt(document.getElementById('s-rush').value);
+  var rushKey = document.getElementById('s-rush').value;
+  var numLevels = (rushKey === 'violet' || rushKey === 'red' || rushKey === 'yellow') ? 8 : parseInt(rushKey);
+  setRush(rushKey);
   var orderMatters = document.querySelector('input[name="order"]:checked').value === '1';
   var rawInput    = document.getElementById('s-levels').value;
   var searchDepth = parseInt(document.getElementById('s-depth').value) || numLevels;
@@ -474,7 +516,8 @@ function startSearch() {
   if (searchDepth < targetIndices.length) searchDepth = targetIndices.length;
 
   // Force First Level
-  var forceFirstEnabled = document.getElementById('ffl-checkbox').checked;
+  var is8Level = (rushKey === 'violet' || rushKey === 'red' || rushKey === 'yellow');
+  var forceFirstEnabled = !is8Level && document.getElementById('ffl-checkbox').checked;
   var forceFirstIdx = -1;
   if (forceFirstEnabled) {
     var fflInput = document.getElementById('ffl-level').value.trim();
@@ -536,7 +579,7 @@ function startSearch() {
       // ── Reset identity array ──
       for (var i = 0; i < numLevels; i++) _arr[i] = i;
 
-      // ── Partial shuffle with inline match check ──
+      // ── Full shuffle ──────────────────────────────────────────────────────
       var ie = 0, ixx = 21;
       var match = true, foundCount = 0;
 
@@ -548,21 +591,16 @@ function startSearch() {
         _SA[ie] = r;
         var j = Math.floor(r * INV * numLevels);
         var tmp = _arr[i]; _arr[i] = _arr[j]; _arr[j] = tmp;
-
-        // Exact order: check inline and bail on first mismatch
-        if (orderMatters && i < tLen) {
-          if (_arr[i] !== targetIndices[i]) { match = false; break; }
-          if (i === tLen - 1) break;
-        }
-        // Force first: bail immediately if position 0 isn't the forced level
-        if (forceFirstEnabled && i === 0) {
-          if (_arr[0] !== forceFirstIdx) { match = false; break; }
-        }
-        // Unordered: run the full shuffle, check positions afterwards
       }
 
-      if (!orderMatters) {
-        // Check force-first constraint
+      // ── Match check (always after full shuffle) ───────────────────────────
+      if (orderMatters) {
+        // Exact order: positions 0..tLen-1 must match exactly
+        for (var i = 0; i < tLen; i++) {
+          if (_arr[i] !== targetIndices[i]) { match = false; break; }
+        }
+      } else {
+        // Any order: all targets must appear within searchDepth positions
         if (forceFirstEnabled && _arr[0] !== forceFirstIdx) {
           match = false;
         } else {
@@ -572,7 +610,7 @@ function startSearch() {
           }
           match = (foundCount === tLen);
         }
-      };
+      }
 
       if (match) {
         var order = fullShuffle(numLevels, seed);
@@ -710,7 +748,9 @@ function showSearchError(msg) {
 
 // ── Generate tab ───────────────────────────────────────────────────────────
 function generateOrder() {
-  var numLevels = parseInt(document.getElementById('g-rush').value);
+  var rushKey = document.getElementById('g-rush').value;
+  var numLevels = (rushKey === 'violet' || rushKey === 'red' || rushKey === 'yellow') ? 8 : parseInt(rushKey);
+  setRush(rushKey);
   var seed      = parseInt(document.getElementById('g-seed').value);
   if (!seed || seed < 1) { alert('Please enter a valid seed (positive integer).'); return; }
   var order = fullShuffle(numLevels, seed);
@@ -949,6 +989,73 @@ function standardizeSplits() {
 function toggleResultMode() {
   var multi = document.querySelector('input[name="resultmode"]:checked').value === 'multi';
   document.getElementById('maxseeds-wrap').style.display = multi ? 'block' : 'none';
+}
+
+function onRushChange(tab) {
+  var sel = document.getElementById(tab + '-rush');
+  var rushKey = sel.value;
+  var is8Level = (rushKey === 'violet' || rushKey === 'red' || rushKey === 'yellow');
+  var maxDepth = is8Level ? 8 : 96;
+
+  // Update search depth max
+  var depthEl = document.getElementById('s-depth');
+  if (depthEl) {
+    depthEl.max = maxDepth;
+    if (parseInt(depthEl.value) > maxDepth) depthEl.value = maxDepth;
+  }
+
+  // Only show/hide search tab UI elements when on the search tab
+  if (tab === 's') {
+    // Order Matters: show only for 8-level rushes, hide for White/Mikey
+    var orderField = document.getElementById('order-matters-field');
+    if (orderField) {
+      orderField.style.display = is8Level ? 'block' : 'none';
+      // Reset to No - Any Order when switching
+      document.getElementById('o-no').checked = true;
+    }
+
+    // Force First Level: show only for White/Mikey, hide for 8-level rushes
+    var forceFirstField = document.getElementById('force-first-field');
+    if (forceFirstField) {
+      forceFirstField.style.display = is8Level ? 'none' : 'block';
+      // Reset checkbox and hide input when switching away
+      if (is8Level) {
+        document.getElementById('ffl-checkbox').checked = false;
+        document.getElementById('ffl-wrap').classList.remove('visible');
+        document.getElementById('ffl-level').value = '';
+      }
+    }
+
+    // Clear Desired Starting Levels on rush switch to avoid cross-rush confusion
+    document.getElementById('s-levels').value = '';
+    updatePlaceholders(rushKey);
+  }
+}
+
+var RUSH_PLACEHOLDERS = {
+  '96':     'e.g. The Third Temple, Absolution, The Clocktower',
+  'violet': 'e.g. Doghouse, Razor, Chain',
+  'red':    'e.g. Fireball Traversal, Purify Traversal, Stomp Traversal',
+  'yellow': 'e.g. SFP, BM, Rocket'
+};
+
+function updatePlaceholders(rushKey) {
+  var ph = RUSH_PLACEHOLDERS[rushKey] || RUSH_PLACEHOLDERS['96'];
+  document.getElementById('s-levels').placeholder = ph;
+}
+
+function onOrderChange() {
+  var exactOrder = document.getElementById('o-yes').checked;
+  var depthField = document.getElementById('search-depth-field');
+  if (depthField) {
+    depthField.style.display = exactOrder ? 'none' : 'block';
+    // Reset depth to default when switching back to Any Order
+    if (!exactOrder) {
+      var rushKey = document.getElementById('s-rush').value;
+      var is8Level = (rushKey === 'violet' || rushKey === 'red' || rushKey === 'yellow');
+      document.getElementById('s-depth').value = is8Level ? 8 : 10;
+    }
+  }
 }
 
 function toggleForceFirst() {
