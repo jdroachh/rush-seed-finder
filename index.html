@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rush Seed Finder v2.1.5</title>
+<title>Rush Seed Finder v2.1.6</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -164,7 +164,7 @@
 <body>
 <div class="container">
   <header>
-    <div class="eyebrow">// tool v2.1.5</div>
+    <div class="eyebrow">// tool v2.1.6</div>
     <h1>RUSH<br><span>SEED</span><br>FINDER</h1>
     <p class="subtitle">Find or generate level seeds for Neon White Heaven or Hell Rush. Uses the same seeded shuffle as the game engine.</p>
   </header>
@@ -186,7 +186,7 @@
         </select>
       </div>
       <div class="field" id="search-depth-field">
-        <label>Search Depth</label>
+        <label class="section-label">Search Depth</label>
         <input type="number" id="s-depth" value="10" min="1" max="96">
         <div class="hint">Levels deep to search for your desired levels</div>
       </div>
@@ -205,7 +205,7 @@
       </div>
     </div>
     <div class="field" id="order-matters-field" style="display:none;">
-      <label>Order Matters?</label>
+      <label class="section-label">Order Matters?</label>
       <div class="toggle-group" style="display:flex;">
         <input type="radio" name="order" id="o-no" value="0" checked onchange="onOrderChange()">
         <label for="o-no" style="flex:1;text-align:center;padding:10px;border:1px solid var(--border);cursor:pointer;font-size:14px;letter-spacing:1px;transition:all 0.2s;margin:0;border-right:none;">No &mdash; Any Order</label>
@@ -271,7 +271,7 @@
   <div class="tab-panel" id="tab-generate">
     <div class="row">
       <div class="field">
-        <label>Rush Name</label>
+        <label class="section-label">Rush Name</label>
         <select id="g-rush" onchange="onRushChange('g')">
           <option value="96">White / Mikey (96 levels)</option>
           <option value="violet">Violet (8 levels)</option>
@@ -280,7 +280,7 @@
         </select>
       </div>
       <div class="field">
-        <label>Seed</label>
+        <label class="section-label">Seed</label>
         <input type="number" id="g-seed" placeholder="e.g. 87921" min="1">
       </div>
     </div>
@@ -293,8 +293,8 @@
     </div>
   </div>
   <div class="tab-panel" id="tab-splits">
-    <div class="field" style="margin-bottom:20px;">
-      <label>Rush Name</label>
+    <div class="field">
+      <label class="section-label">Rush Name</label>
             <select id="sp-rush" onchange="onSplitsRushChange()">
           <option value="96">White / Mikey (96 levels)</option>
           <option value="violet">Violet (8 levels)</option>
@@ -304,13 +304,13 @@
     </div>
     <div class="row">
       <div class="field">
-        <label>Gold Splits</label>
+        <label class="section-label">Gold Splits</label>
         <textarea id="sp-gold" rows="6" placeholder="Paste one time per line&#10;e.g.&#10;17.993&#10;1:20.730&#10;45.012" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:16px;padding:12px 16px;outline:none;resize:vertical;transition:border-color 0.2s;"></textarea>
         <div class="hint">Best individual level times. One per line.</div>
         <div class="hint" id="sp-gold-hint" style="color:var(--accent2);margin-top:4px;">Paste times in standard level order (Movement first, Absolution last).</div>
       </div>
       <div class="field">
-        <label>Segment Splits</label>
+        <label class="section-label">Segment Splits</label>
         <textarea id="sp-seg" rows="6" placeholder="Paste one time per line&#10;e.g.&#10;17.993&#10;1:20.730&#10;45.012" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:16px;padding:12px 16px;outline:none;resize:vertical;transition:border-color 0.2s;"></textarea>
         <div class="hint">Cumulative or segment run times. One per line.</div>
         <div class="hint" id="sp-seg-hint" style="color:var(--accent2);margin-top:4px;">Paste times in standard level order (Movement first, Absolution last).</div>
@@ -323,7 +323,7 @@
       <span class="cache-status" id="cache-status"></span>
     </div>
     <div class="field" style="margin-top:20px;">
-      <label>Seed Number</label>
+      <label class="section-label">Seed Number</label>
       <input type="number" id="sp-seed" placeholder="e.g. 58685" min="1">
     </div>
     <div id="sp-error" style="display:none;color:var(--accent2);font-size:14px;margin-top:12px;line-height:1.6;padding:10px 14px;border:1px solid var(--accent2);"></div>
@@ -355,8 +355,8 @@
   </div>
 
   <div class="tab-panel" id="tab-standardize">
-    <div class="field" style="margin-bottom:20px;">
-      <label>Rush Name</label>
+    <div class="field">
+      <label class="section-label">Rush Name</label>
             <select id="std-rush" onchange="onStdRushChange()">
           <option value="96">White / Mikey (96 levels)</option>
           <option value="violet">Violet (8 levels)</option>
@@ -366,13 +366,13 @@
     </div>
     <div class="row">
       <div class="field">
-        <label>Gold Splits</label>
+        <label class="section-label">Gold Splits</label>
         <textarea id="std-gold" rows="6" placeholder="Paste one time per line&#10;e.g.&#10;17.993&#10;1:20.730&#10;45.012" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:16px;padding:12px 16px;outline:none;resize:vertical;transition:border-color 0.2s;"></textarea>
         <div class="hint">Best individual level times. One per line.</div>
         <div class="hint" id="std-gold-hint" style="color:var(--accent2);margin-top:4px;">Paste times in seed order (the order your seed plays levels).</div>
       </div>
       <div class="field">
-        <label>Segment Splits</label>
+        <label class="section-label">Segment Splits</label>
         <textarea id="std-seg" rows="6" placeholder="Paste one time per line&#10;e.g.&#10;17.993&#10;1:20.730&#10;45.012" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:16px;padding:12px 16px;outline:none;resize:vertical;transition:border-color 0.2s;"></textarea>
         <div class="hint">Cumulative or segment run times. One per line.</div>
         <div class="hint" id="std-seg-hint" style="color:var(--accent2);margin-top:4px;">Paste times in seed order (the order your seed plays levels).</div>
@@ -385,7 +385,7 @@
       <span class="cache-status" id="std-cache-status"></span>
     </div>
     <div class="field" style="margin-top:20px;">
-      <label>Seed Number</label>
+      <label class="section-label">Seed Number</label>
       <input type="number" id="std-seed" placeholder="e.g. 58685" min="1">
     </div>
     <div id="std-error" style="display:none;color:var(--accent2);font-size:14px;margin-top:12px;line-height:1.6;padding:10px 14px;border:1px solid var(--accent2);"></div>
@@ -410,7 +410,7 @@
   </div>
 
 </div>
-<div class="corner-deco">SEED ENGINE // v2.1.5</div>
+<div class="corner-deco">SEED ENGINE // v2.1.6</div>
 <script>
 // ── C# System.Random port ──────────────────────────────────────────────────
 var MBIG = 2147483647;
