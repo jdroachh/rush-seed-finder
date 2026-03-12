@@ -1,150 +1,153 @@
-# rush-seed-finder
-Neon White Rush seed finder for Heaven / Hell rushes (all colors). Allows you to find a seed given specific parameters, parse a seed, get splits for a specific seed and standardize splits back to standard rush order.
-This project is entirely VIBE coded utilizing Claude code. The tool was adapted from Grange Nagy's C# / Python tool in order to implement a GUI for easier user interaction.
-
-Tool Overview:
-Find Seed - Determine your desired rush (from White/Mikey, Red, Yellow, or Violet). Find seeds with desired levels (denoted in the "desired starting levels" text box) within the first X number of stages (X = search depth). 
-For White/Mikey rush, you can also pin a level to the first slot (so the tool will only find seeds with the pinned level in position 1). By checking the exclude levels from opening postion setting, you can also exclude levels from the first Y number of stages (Y = exclusion window)
-Enable the find multiple setting to find multiple seeds given your search query.
-
-Seed Parser - Input a seed # and view the seed's level order.
-
-Splits Updater - Copy and paste your gold splits and segment splits from your favorite splits software into the appropriate fields, enter the seed # you'd like to re-order your splits to in the "seed number" field. Click generate splits to re-order the split times. Copy and paste the resulting list (gold splits, segment splits, level names) into the appropriate fields of your splits software.
-
-Standardize Splits - Copy and paste your gold splits and segment splits from a specific seed number back into "standard order" (Movement first, Abso last/Doghouse first, RSII last, etc)
-
-----------
-Tab 1: Find Seed
-----------
-
-Search through all possible seeds (1 to 2,147,483,647) to find one whose level order matches your desired starting levels.
-
-Inputs
------
-Rush Name: 
-White / Mikey — 96-level rush, Violet/Red/Yellow — 8-level rush
-Search Depth: 
-How many levels deep into the sequence to look for your desired levels. For example, a depth of 10 means your desired levels must all appear somewhere within the first 10 positions of the run.
-Tip: for faster load times, set depth higher than the number of levels you are searching for. Searching for 3 levels with a depth of 3 requires all 3 to be the very first levels — a depth of 10 or 15 gives much more flexibility.
-Order Matters (Violet/Red/Yellow rushes only): 
-No — Any Order: your desired levels just need to appear anywhere within the first N positions (where N is the Search Depth), in any order relative to each other.
-Yes — Exact Order: your desired levels will appear in the exact order you specify in your search.
-Desired Starting Levels: 
-Comma-separated list of the levels you want to appear at the start of your run.
-Accepts full level names (case insensitive), shorthand aliases, or partial names.
-Force First Level: 
-For White/Mikey rush, you can also pin a level to the first slot so the tool will only find seeds with the pinned level in position 1.
-Exluded Levels: 
-Levels you do want to see in the first [exclusion window] number of stages.
-Exclusion Window:
-How many levels appear in the sequence before the excluded levels appear. This is helpful if you want stages you're more comfortable running to appear towards the end of the rush.
-
-Level Name Formats
+# Rush Seed Finder
+ 
+A browser-based tool for Neon White speedrunners. Search for seeds that produce favourable level orders, parse any seed into its full level sequence, and reorder or standardize LiveSplit splits files across all four rush types.
+ 
 ---
-The following input formats are all accepted:
-Full name: 
-The Third Temple, Absolution, The Clocktower
-Shorthand aliases: 
-TTT  =  The Third Temple
-CT  =  The Clocktower
-Glort  =  Glass Port
-Partial names (must match exactly one level): 
-Rico  =  Ricochet
-Trig  =  Trigger
-Glass  =  Glass Port
-Green  =  Greenhouse
-If a partial name matches more than one level, the tool will show an error listing all matches so you can be more specific.
-
-Running a Search
+ 
+## Supported Rushes
+ 
+| Rush | Levels |
+|---|---|
+| White / Mikey | 96 |
+| Violet | 8 |
+| Red | 8 |
+| Yellow | 8 |
+ 
 ---
-Click FIND SEED to begin. The progress bar shows the percentage of seeds checked, current speed in seeds per second, and an estimated time remaining. Click STOP SEARCH at any time to cancel.
-
-Results
+ 
+## Tabs
+ 
+### Find Seed
+ 
+Search up to 2,147,483,647 seeds to find ones where specific levels appear early in the run.
+ 
+#### Rush Name
+Select which rush you are searching for. Changing the rush clears all level inputs and resets optional toggles automatically.
+ 
+#### Search Depth
+How many positions from the start of the run to search within. For example, a Search Depth of 10 means all Desired Starting Levels must appear within the first 10 positions. Defaults to the total number of levels for the selected rush. Automatically adjusts to fit at least as many positions as you have Desired Starting Levels.
+ 
+#### Result Mode
+- **First Match** — stops as soon as one qualifying seed is found.
+- **Find Multiple** — continues searching until N seeds are found. Set N with the number input (default 5, max 100). Results appear in an expandable list as they are found, with the first result auto-expanded.
+ 
+#### Order Matters? *(8-level rushes only)*
+- **No — Any Order** — all Desired Starting Levels just need to appear somewhere within Search Depth, in any order.
+- **Yes — Exact Order** — levels must appear in the exact sequence you enter them, starting from position 1. Search Depth is hidden in this mode.
+ 
+#### Desired Starting Levels
+A comma-separated list of levels you want to appear early. Accepts full names, partial names, or aliases (see [Level Name Formats](#level-name-formats) below).
+ 
+#### Force First Level *(White / Mikey only)*
+When enabled, pin a specific level to position 1. The Desired Starting Levels must still all appear within Search Depth. Throws an error if the forced level is also listed in Desired Starting Levels or Excluded Levels.
+ 
+#### Excluded Levels
+When enabled, exposes two fields:
+- **Exclusion Window** — how many positions from the start must be free of the excluded levels.
+- **Excluded Levels** — comma-separated list of levels that must not appear within the Exclusion Window.
+ 
+Excluded levels are highlighted in **amber** wherever they appear in the results. Throws an error if any excluded level also appears in Desired Starting Levels or is the same as the Force First Level.
+ 
+#### Results
+Each found seed is shown in an expandable accordion. Click a seed entry to expand its full level sequence. Desired levels are highlighted in **green**, excluded levels in **amber**. A **COPY** button on each entry copies the seed number to the clipboard.
+ 
 ---
-When a match is found, the result section shows:
-Found Seed: the seed number to enter in-game (plain integer, no commas).
-Level Sequence: the full level order that seed produces, listed top to bottom. Your target levels are highlighted in green.
-
-----------
-Tab 2: Seed Parser
-----------
-Given a known seed number, generates and displays the complete level order that seed produces. Useful for previewing what a specific seed looks like before committing to it in-game.
-
-Inputs
+ 
+### Seed Parser
+ 
+Enter a rush and a seed number to generate the full level order for that seed. Useful for quickly checking what a known seed plays like without running a search.
+ 
 ---
-Rush Name: White / Mikey (96 levels).
-Seed: any integer between 1 and 2,147,483,647.
-
-Results
+ 
+### Splits Updater
+ 
+Takes Gold Splits and/or Segment Splits in **standard level order** (alphabetical / in-game index order) and reorders them into the order a specific seed will play them. Output is ready to paste into LiveSplit.
+ 
+#### Inputs
+- **Rush Name** — select the rush your splits are for.
+- **Gold Splits** — best individual level times, one per line, in standard level order.
+- **Segment Splits** — cumulative or per-segment run times, one per line, in standard level order.
+- **Seed Number** — the seed you want to generate splits for.
+ 
+At least one of Gold or Segment Splits must be filled in. Both can be provided at once.
+ 
+#### Saved Splits
+Use **SAVE SPLITS**, **LOAD SAVED**, and **CLEAR SAVED** to persist your pasted splits in your browser's local storage so you don't need to re-paste them each session. Saved splits are stored per-browser and never shared.
+ 
+#### Output
+Three output boxes appear after generation:
+- **Gold Splits** — reordered gold times in seed play order.
+- **Segment Splits** — reordered segment times in seed play order.
+- **Level Order** — the level names in the order the seed plays them.
+ 
+Each output box has a **COPY** button.
+ 
 ---
-Click PARSE SEED to generate the full 96-level sequence for that seed, listed top to bottom.
-
-----------
-Tab 3: Splits Updater
-----------
-Takes your splits (stored in standard level order) and reorders them to match the level order of a specific seed. Use this to prepare your splits file before starting a run on a new seed.
-
-Standard Order vs. Seed Order
+ 
+### Standardize Splits
+ 
+The inverse of Splits Updater. Takes splits recorded in a specific **seed's play order** and converts them back to **standard level order**. Useful for updating your gold splits file after a run on a particular seed.
+ 
+#### Inputs
+- **Rush Name** — select the rush.
+- **Gold Splits** — times in the order the seed played levels.
+- **Segment Splits** — times in the order the seed played levels.
+- **Seed Number** — the seed the run was played on.
+ 
+#### Output
+Gold and Segment Splits reordered back into standard level index order, ready to merge back into your splits file. Each has a **COPY** button.
+ 
 ---
-Standard order is the fixed sequence of all 96 levels as listed in the game's level registry — Movement is always first, Absolution is always last. Your splits tool typically stores personal bests in this fixed order.
-Seed order is the shuffled sequence that a specific seed produces — for example, seed 58685 might play The Clocktower first, then Absolution, then The Third Temple, and so on.
-Splits Updater converts: Standard Order → Seed Order.
-
-Inputs
+ 
+## Level Name Formats
+ 
+All level name inputs across every tab accept the following formats, case-insensitive:
+ 
+- **Full name** — `The Third Temple`, `Absolution`, `Elevate Traversal I`
+- **Partial name** — any substring that matches exactly one level, e.g. `clocktower`, `absol`, `breakthrough`
+- **Alias** — shorthand codes listed below
+ 
+If a partial name matches more than one level, an error is shown listing all matches.
+ 
+### Aliases
+ 
+| Alias | Level |
+|---|---|
+| `ttt` | The Third Temple |
+| `ct`, `clocktower` | The Clocktower |
+| `glort` | Glass Port |
+| `ase` | All Seeing Eye |
+| `rsi`, `rs1` | Resident Saw I |
+| `rsii`, `rs2` | Resident Saw II |
+| `eti`, `et1` | Elevate Traversal I |
+| `etii`, `et2` | Elevate Traversal II |
+| `boof trav` | Book of Life Traversal |
+| `sfp` | Sunset Flip Powerbomb |
+| `bm` | Balloon Mountain |
+| `cg` | Climbing Gym |
+| `fish sup`, `fish soup` | Fisherman Suplex |
+ 
 ---
-Gold Splits: your best individual level times from your favorite splits software, one per line, in standard level order (Movement first, Absolution last).
-Segment Splits: your cumulative or per-segment run times, one per line, in standard level order.
-Seed Number: the seed you are about to run.
-Paste times in standard level order. The first time pasted corresponds to Movement, the second to Pummel, and so on through all 96 levels.
-
-Time Format
+ 
+## Standard Level Orders
+ 
+### White / Mikey (96 levels)
+Movement, Pummel, Gunner, Cascade, Elevate, Bounce, Purify, Climb, Fasttrack, Glass Port, Take Flight, Godspeed, Dasher, Thrasher, Outstretched, Smackdown, Catwalk, Fastlane, Distinguish, Dancer, Guardian, Stomp, Jumper, Dash Tower, Descent, Driller, Canals, Sprint, Mountain, Superkinetic, Arrival, Forgotten City, The Clocktower, Fireball, Ringer, Cleaner, Warehouse, Boom, Streets, Steps, Demolition, Arcs, Apartment, Hanging Gardens, Tangled, Waterworks, Killswitch, Falling, Shocker, Bouquet, Prepare, Triptrack, Race, Bubble, Shield, Overlook, Pop, Minefield, Mimic, Trigger, Greenhouse, Sweep, Fuse, Heaven's Edge, Zipline, Swing, Chute, Crash, Ascent, Straightaway, Firecracker, Streak, Mirror, Escalation, Bolt, Godstreak, Plunge, Mayhem, Barrage, Estate, Trapwire, Ricochet, Fortress, Holy Ground, The Third Temple, Spree, Breakthrough, Glide, Closer, Hike, Switch, Access, Congregation, Sequence, Marathon, Absolution
+ 
+### Violet (8 levels)
+Doghouse, Choker, Chain, Hellavator, Razor, All Seeing Eye, Resident Saw I, Resident Saw II
+ 
+### Red (8 levels)
+Elevate Traversal I, Elevate Traversal II, Purify Traversal, Godspeed Traversal, Stomp Traversal, Fireball Traversal, Dominion Traversal, Book of Life Traversal
+ 
+### Yellow (8 levels)
+Sunset Flip Powerbomb, Balloon Mountain, Climbing Gym, Fisherman Suplex, STF, Arena, Attitude Adjustment, Rocket
+ 
 ---
-Times are accepted in the following format:
-Seconds.Milliseconds       e.g.  17.993  =  17 seconds, 993ms
-Minutes:Seconds.Milliseconds   e.g.  1:20.730  =  1 min, 20 sec, 730ms
-
-Save / Load / Clear
----
-Your splits can be saved to your browser's local storage so you do not need to paste them again each session:
-SAVE SPLITS: saves the current Gold and Segment inputs to your browser cache.
-LOAD SAVED: restores previously saved splits into the input fields.
-CLEAR SAVED: removes the saved splits from your browser cache.
-Saved splits persist between sessions in the same browser. They are stored locally on your device and are never sent anywhere.
-
-Results
----
-Clicking GENERATE SPLITS produces up to three copyable output textareas:
-Gold Splits: your gold times reordered into the seed's level sequence.
-Segment Splits: your segment times reordered into the seed's level sequence.
-Level Order: the full list of level names in seed order, one per line.
-Each section has a COPY button. Click it to copy the contents directly to your clipboard, ready to paste into your splits tool.
-
-----------
-Tab 4: Standardize Splits
-----------
-The inverse of Splits Updater. Takes splits recorded during a run (which are in seed order) and converts them back into standard level order for storage in your splits tool.
-Standardize Splits converts: Seed Order → Standard Order.
-
-When to Use This
----
-After completing a run on a specific seed, your splits tool will have recorded times in the order the seed played levels. Before you can update your personal bests or use those times with a different seed, they need to be returned to standard order. Paste them here along with the seed you ran, and the tool will rearrange them back into standard order.
-
-Inputs
----
-Gold Splits: your times from the run, one per line, in the order the seed played levels (seed order).
-Segment Splits: your segment times, one per line, in seed order.
-Seed Number: the seed you ran.
-Paste times in seed order — the order the seed played the levels during your run, not standard level order.
-
-Save / Load / Clear
----
-Standardize Splits has its own independent save/load/clear cache, separate from Splits Updater, so the two sets of splits do not overwrite each other.
-
-Results
----
-Clicking STANDARDIZE SPLITS produces two copyable output textareas:
-Gold Splits: your times rearranged into standard level order.
-Segment Splits: your segment times rearranged into standard level order.
-Copy the outputs and paste them into your splits tool to update your personal bests.
-
-
+ 
+## Browser Compatibility
+ 
+The tool runs entirely in the browser with no server required. All features work in any modern browser. The saved splits feature uses browser local storage and is private to your device.
+ 
+> **Note for v3.0+ test builds:** The GPU-accelerated search path requires WebGPU support, currently available in Chrome 113+ and Edge 113+. Firefox and Safari will automatically fall back to the standard CPU search with no loss of functionality.
+ 
