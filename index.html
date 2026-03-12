@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rush Seed Finder v2.1.6</title>
+<title>Rush Seed Finder v2.1.7</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -164,7 +164,7 @@
 <body>
 <div class="container">
   <header>
-    <div class="eyebrow">// tool v2.1.6</div>
+    <div class="eyebrow">// tool v2.1.7</div>
     <h1>RUSH<br><span>SEED</span><br>FINDER</h1>
     <p class="subtitle">Find or generate level seeds for Neon White Heaven or Hell Rush. Uses the same seeded shuffle as the game engine.</p>
   </header>
@@ -215,7 +215,7 @@
     </div>
     <div class="field">
       <label class="section-label">Desired Starting Levels</label>
-      <input type="text" id="s-levels" placeholder="e.g. The Third Temple, Absolution, The Clocktower">
+      <input type="text" id="s-levels" placeholder="e.g. The Third Temple, Absolution, The Clocktower" oninput="syncDepthToLevels()">
       <div class="hint">Comma-separated level names or numbers (1-indexed). Case insensitive.</div>
     </div>
     <hr class="section-divider">
@@ -410,7 +410,7 @@
   </div>
 
 </div>
-<div class="corner-deco">SEED ENGINE // v2.1.6</div>
+<div class="corner-deco">SEED ENGINE // v2.1.7</div>
 <script>
 // ── C# System.Random port ──────────────────────────────────────────────────
 var MBIG = 2147483647;
@@ -568,7 +568,10 @@ function startSearch() {
   if (parsed.error) { showSearchError(parsed.error); return; }
 
   var targetIndices = parsed.indices;
-  if (searchDepth < targetIndices.length) searchDepth = targetIndices.length;
+  if (targetIndices.length > 0 && searchDepth < targetIndices.length) {
+    showSearchError('Search Depth (' + searchDepth + ') is less than the number of Desired Starting Levels (' + targetIndices.length + '). Please increase Search Depth to at least ' + targetIndices.length + '.');
+    return;
+  }
 
   // Avoid / Excluded Levels
   var avoidEnabled = document.getElementById('avoid-checkbox').checked;
@@ -1212,6 +1215,19 @@ function toggleAvoid() {
     document.getElementById('avoid-levels').value = '';
     document.getElementById('avoid-depth').value = '5';
   }
+}
+
+function syncDepthToLevels() {
+  var raw   = document.getElementById('s-levels').value;
+  var count = raw.split(',').map(function(s){ return s.trim(); }).filter(Boolean).length;
+  if (count === 0) return;
+  var depthEl = document.getElementById('s-depth');
+  var current = parseInt(depthEl.value) || 1;
+  if (current < count) {
+    depthEl.value = count;
+  }
+  // Keep the min attribute in sync so the browser spinner won't go below count
+  depthEl.min = Math.max(1, count);
 }
 
 function toggleForceFirst() {
