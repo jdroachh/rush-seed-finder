@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rush Seed Finder v2.1.7</title>
+<title>Rush Seed Finder v3.3.2</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -127,6 +127,24 @@
   .seed-entry-body { display: none; border-top: 1px solid var(--border); padding: 12px 16px; }
   .seed-entry.open .seed-entry-body { display: block; }
 
+  /* Advanced Options */
+  .adv-toggle { display:flex; align-items:center; gap:0; width:100%; background:none; border:none; border-top:1px solid var(--border); border-bottom:1px solid transparent; color:var(--text-dim); font-family:var(--mono); font-size:11px; letter-spacing:2px; text-transform:uppercase; padding:10px 0; cursor:pointer; margin-top:8px; transition:color 0.2s; }
+  .adv-toggle:hover { color:var(--text); }
+  .adv-toggle .adv-arrow { margin-right:10px; display:inline-block; transition:transform 0.2s; font-style:normal; }
+  .adv-toggle.open { color:var(--text); border-bottom-color:var(--border); }
+  .adv-toggle.open .adv-arrow { transform:rotate(90deg); }
+  .adv-body { display:none; padding:16px 0 8px; }
+  .adv-body.visible { display:block; }
+  /* Engine mode toggle */
+  .engine-bar { display:flex; align-items:center; gap:12px; }
+  .engine-bar label { font-size:11px; letter-spacing:2px; color:var(--text-dim); margin:0; padding:0; border:none; text-transform:uppercase; font-weight:400; }
+  .engine-btn { background:none; border:1px solid var(--border); color:var(--text-dim); font-family:var(--mono); font-size:12px; letter-spacing:2px; padding:6px 14px; cursor:pointer; text-transform:uppercase; transition:all 0.15s; }
+  .engine-btn.active { background:var(--accent); color:var(--bg); border-color:var(--accent); font-weight:700; }
+  .engine-btn:disabled { opacity:0.3; cursor:not-allowed; }
+  .engine-btn.gpu-btn.active { background:#a78bfa; border-color:#a78bfa; }
+  .engine-status { font-size:11px; letter-spacing:1px; margin-left:auto; }
+  .engine-status.ready  { color:#a78bfa; }
+  .engine-status.unavail { color:var(--text-dim); }
   /* Avoid / Excluded Levels */
   .avoid-wrap { display: none; margin-top: 14px; }
   .avoid-wrap.visible { display: block; }
@@ -164,7 +182,7 @@
 <body>
 <div class="container">
   <header>
-    <div class="eyebrow">// tool v2.1.7</div>
+    <div class="eyebrow">// tool v3.3.2</div>
     <h1>RUSH<br><span>SEED</span><br>FINDER</h1>
     <p class="subtitle">Find or generate level seeds for Neon White Heaven or Hell Rush. Uses the same seeded shuffle as the game engine.</p>
   </header>
@@ -249,6 +267,17 @@
             <div class="hint">Comma-separated. These levels must not appear in the first N positions.</div>
           </div>
         </div>
+      </div>
+    </div>
+    <button class="adv-toggle" id="adv-toggle" onclick="toggleAdvanced()">
+      <em class="adv-arrow">&#9658;</em> Advanced Options
+    </button>
+    <div class="adv-body" id="adv-body">
+      <div class="engine-bar">
+        <label>Search Engine</label>
+        <button class="engine-btn active" id="engine-cpu-btn" onclick="setEngineMode('cpu')">⚙ CPU</button>
+        <button class="engine-btn gpu-btn" id="engine-gpu-btn" onclick="setEngineMode('gpu')" disabled>⚡ GPU</button>
+        <span class="engine-status unavail" id="engine-status">Detecting GPU...</span>
       </div>
     </div>
     <button class="btn" id="search-btn" onclick="startSearch()">FIND SEED</button>
@@ -410,7 +439,7 @@
   </div>
 
 </div>
-<div class="corner-deco">SEED ENGINE // v2.1.7</div>
+<div class="corner-deco">SEED ENGINE // v3.3.2</div>
 <script>
 // ── C# System.Random port ──────────────────────────────────────────────────
 var MBIG = 2147483647;
@@ -556,6 +585,393 @@ var searchTimer = null;
 var _SA  = new Int32Array(56);
 var _arr = new Int32Array(96); // max 96 levels
 
+// ── Bitset helpers (3×u32 = 96 bits, one per level index) ─────────────────
+// Much faster than object property lookup in the hot loop
+var _targetBits = new Uint32Array(3); // bits for desired levels
+var _avoidBits  = new Uint32Array(3); // bits for excluded levels
+function bitsetSet(bs, idx)   { bs[idx >> 5] |=  (1 << (idx & 31)); }
+function bitsetTest(bs, idx)  { return (bs[idx >> 5] & (1 << (idx & 31))) !== 0; }
+function bitsetClear(bs)      { bs[0] = 0; bs[1] = 0; bs[2] = 0; }
+
+
+// ── WebGPU seed search ──────────────────────────────────────────────────────
+var gpuDevice   = null;
+var gpuAdapter  = null;
+var gpuReady    = false;
+var engineMode  = 'cpu'; // 'cpu' or 'gpu' — set by user, saved to localStorage
+var GPU_CHUNK   = 65536;        // calibrated on first search
+var GPU_CALIBRATED = false;
+var GPU_TARGET_MS  = 50;        // target ms per dispatch
+var GPU_CHUNK_MIN  = 65536;
+var GPU_CHUNK_MAX  = 4000000;
+
+function toggleAdvanced() {
+  var toggle = document.getElementById('adv-toggle');
+  var body   = document.getElementById('adv-body');
+  var open   = body.classList.toggle('visible');
+  toggle.classList.toggle('open', open);
+}
+
+function setEngineMode(mode) {
+  if (mode === 'gpu' && !gpuReady) return; // guard — button should be disabled anyway
+  engineMode = mode;
+  try { localStorage.setItem('rsf_engine', mode); } catch(e) {}
+  document.getElementById('engine-cpu-btn').classList.toggle('active', mode === 'cpu');
+  document.getElementById('engine-gpu-btn').classList.toggle('active', mode === 'gpu');
+}
+
+async function initWebGPU() {
+  if (!navigator.gpu) {
+    updateEngineUI(false, 'WebGPU not supported in this browser');
+    return false;
+  }
+  try {
+    gpuAdapter = await navigator.gpu.requestAdapter();
+    if (!gpuAdapter) { updateEngineUI(false, 'No GPU adapter found'); return false; }
+    gpuDevice = await gpuAdapter.requestDevice();
+    gpuReady  = true;
+    // Read GPU name for display if available
+    var gpuName = '';
+    try { gpuName = gpuAdapter.info ? (gpuAdapter.info.description || gpuAdapter.info.device || '') : ''; } catch(e) {}
+    updateEngineUI(true, gpuName ? '⚡ ' + gpuName : '⚡ GPU ready');
+    // Restore saved preference
+    var saved = null;
+    try { saved = localStorage.getItem('rsf_engine'); } catch(e) {}
+    if (saved === 'gpu') setEngineMode('gpu');
+    console.log('[v3] WebGPU ready');
+    return true;
+  } catch(e) {
+    console.warn('[v3] WebGPU init failed:', e);
+    updateEngineUI(false, 'GPU init failed');
+    return false;
+  }
+}
+
+function updateEngineUI(available, statusText) {
+  var gpuBtn    = document.getElementById('engine-gpu-btn');
+  var statusEl  = document.getElementById('engine-status');
+  if (!gpuBtn || !statusEl) return;
+  gpuBtn.disabled = !available;
+  statusEl.textContent = statusText;
+  statusEl.className = 'engine-status ' + (available ? 'ready' : 'unavail');
+}
+
+initWebGPU();
+
+function buildShader(numLevels, targetBits0, targetBits1, targetBits2,
+                     avoidBits0,  avoidBits1,  avoidBits2,
+                     tLen, searchDepth, avoidDepth, avoidEnabled,
+                     forceFirstEnabled, forceFirstIdx, orderMatters,
+                     targetIndices, maxResults) {
+  // Encode targetIndices for exact-order check (up to 96 values)
+  var idxArray = [];
+  for (var i = 0; i < targetIndices.length; i++) idxArray.push('u32(' + targetIndices[i] + ')');
+  while (idxArray.length < 96) idxArray.push('u32(0)');
+
+  return `
+const MBIG : i32 = 2147483647;
+const NUM_LEVELS : u32 = ${numLevels}u;
+const T_BITS0 : u32 = ${targetBits0}u;
+const T_BITS1 : u32 = ${targetBits1}u;
+const T_BITS2 : u32 = ${targetBits2}u;
+const A_BITS0 : u32 = ${avoidBits0}u;
+const A_BITS1 : u32 = ${avoidBits1}u;
+const A_BITS2 : u32 = ${avoidBits2}u;
+const T_LEN        : u32 = ${tLen}u;
+const SEARCH_DEPTH : u32 = ${searchDepth}u;
+const AVOID_DEPTH  : u32 = ${avoidDepth}u;
+const AVOID_ENABLED       : u32 = ${avoidEnabled ? 1 : 0}u;
+const FORCE_FIRST_ENABLED : u32 = ${forceFirstEnabled ? 1 : 0}u;
+const FORCE_FIRST_IDX     : u32 = ${forceFirstIdx >= 0 ? forceFirstIdx : 0}u;
+const ORDER_MATTERS : u32 = ${orderMatters ? 1 : 0}u;
+const MAX_RESULTS   : u32 = ${maxResults}u;
+
+// Exact-order target indices
+const TARGET_INDICES = array<u32, 96>(${idxArray.join(',')});
+
+struct Params { seed_start: u32, seed_end: u32 }
+@group(0) @binding(0) var<uniform>             params  : Params;
+@group(0) @binding(1) var<storage, read_write> counter : atomic<u32>;
+@group(0) @binding(2) var<storage, read_write> seeds   : array<u32>;
+
+fn bitTest(b0: u32, b1: u32, b2: u32, idx: u32) -> bool {
+  let word = idx >> 5u;
+  let bit  = idx & 31u;
+  if (word == 0u) { return (b0 & (1u << bit)) != 0u; }
+  if (word == 1u) { return (b1 & (1u << bit)) != 0u; }
+  return                   (b2 & (1u << bit)) != 0u;
+}
+
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+  let seed = params.seed_start + gid.x;
+  if (seed >= params.seed_end) { return; }
+  if (seed == 0u || seed > 2147483647u) { return; }
+
+  // Init C# System.Random SA table
+  var SA : array<i32, 56>;
+  var mj : i32 = 161803398i - i32(seed);
+  SA[55] = mj;
+  var mk : i32 = 1i;
+  for (var i : u32 = 1u; i < 55u; i++) {
+    let ix = (21u * i) % 55u;
+    SA[ix] = mk;
+    mk = mj - mk;
+    if (mk < 0i) { mk += MBIG; }
+    mj = SA[ix];
+  }
+  for (var k : u32 = 1u; k < 5u; k++) {
+    for (var i : u32 = 1u; i < 56u; i++) {
+      var n : u32 = i + 30u;
+      if (n >= 55u) { n -= 55u; }
+      SA[i] -= SA[1u + n];
+      if (SA[i] < 0i) { SA[i] += MBIG; }
+    }
+  }
+
+  // Packed u8 array: 4 indices per u32, 24 words covers 96 slots
+  var arr : array<u32, 24>;
+  for (var w : u32 = 0u; w < 24u; w++) {
+    let b = w * 4u;
+    arr[w] = b | ((b+1u) << 8u) | ((b+2u) << 16u) | ((b+3u) << 24u);
+  }
+  var ie : u32 = 0u; var ixx : u32 = 21u;
+  for (var i : u32 = 0u; i < NUM_LEVELS; i++) {
+    ie  += 1u; if (ie  >= 56u) { ie  = 1u; }
+    ixx += 1u; if (ixx >= 56u) { ixx = 1u; }
+    var r : i32 = SA[ie] - SA[ixx];
+    if (r < 0i) { r += MBIG; }
+    SA[ie] = r;
+    // Exact integer index via u32 split multiply (no f32, no u64 needed)
+    let ur  = u32(r);
+    let hi  = ur >> 16u;
+    let lo  = ur & 0xFFFFu;
+    let A   = hi * NUM_LEVELS;
+    let B   = lo * NUM_LEVELS;
+    let j   = (A >> 15u) + ((((A & 0x7FFFu) << 16u) + B) >> 31u);
+    // Packed byte swap: read bytes at positions i and j, swap them
+    let wi = i >> 2u; let si = (i & 3u) * 8u;
+    let wj = j >> 2u; let sj = (j & 3u) * 8u;
+    let vi = (arr[wi] >> si) & 0xFFu;
+    let vj = (arr[wj] >> sj) & 0xFFu;
+    if (wi == wj) {
+      // Same word: clear both bytes and write both in one operation to avoid clobber
+      arr[wi] = (arr[wi] & ~((0xFFu << si) | (0xFFu << sj))) | (vj << si) | (vi << sj);
+    } else {
+      arr[wi] = (arr[wi] & ~(0xFFu << si)) | (vj << si);
+      arr[wj] = (arr[wj] & ~(0xFFu << sj)) | (vi << sj);
+    }
+  }
+
+  // Match check
+  var matched : bool = true;
+  // (packed byte reads inlined at each use site for WGSL compatibility)
+  if (ORDER_MATTERS == 1u) {
+    for (var i : u32 = 0u; i < T_LEN; i++) {
+      let vi = (arr[i >> 2u] >> ((i & 3u) * 8u)) & 0xFFu;
+      if (vi != TARGET_INDICES[i]) { matched = false; break; }
+    }
+  } else {
+    let v0 = (arr[0] >> 0u) & 0xFFu;
+    if (FORCE_FIRST_ENABLED == 1u && v0 != FORCE_FIRST_IDX) {
+      matched = false;
+    } else {
+      var found : u32 = 0u;
+      for (var ci : u32 = 0u; ci < SEARCH_DEPTH; ci++) {
+        let vci = (arr[ci >> 2u] >> ((ci & 3u) * 8u)) & 0xFFu;
+        if (bitTest(T_BITS0, T_BITS1, T_BITS2, vci)) { found++; }
+      }
+      matched = (found == T_LEN);
+    }
+  }
+
+  // Avoid check
+  if (matched && AVOID_ENABLED == 1u) {
+    for (var ai : u32 = 0u; ai < AVOID_DEPTH; ai++) {
+      let vai = (arr[ai >> 2u] >> ((ai & 3u) * 8u)) & 0xFFu;
+      if (bitTest(A_BITS0, A_BITS1, A_BITS2, vai)) { matched = false; break; }
+    }
+  }
+
+  if (matched) {
+    let slot = atomicAdd(&counter, 1u);
+    if (slot < MAX_RESULTS) {
+      seeds[slot] = seed;
+    }
+  }
+}`;
+}
+
+// Re-interpret results[0] as atomic — WGSL uses atomic on storage binding[0]
+// We store count at index 0, seeds at 1..N
+// JS side: read results back and dispatch next chunk
+
+async function gpuSearch(params) {
+  // params: { numLevels, targetBits, avoidBits, tLen, searchDepth, avoidDepth,
+  //           avoidEnabled, forceFirstEnabled, forceFirstIdx, orderMatters,
+  //           targetIndices, maxSeeds, onFound, onProgress, onDone }
+  if (!gpuReady) return false;
+
+  const { numLevels, targetBits, avoidBits, tLen, searchDepth, avoidDepth,
+          avoidEnabled, forceFirstEnabled, forceFirstIdx, orderMatters,
+          targetIndices, maxSeeds, onFound, onProgress, onDone } = params;
+
+  const MAX_SEED = 2147483647;
+  const RESULTS_SLOT = maxSeeds + 1; // staging layout: [count, seed0...seedN]
+  const WG_SIZE = 64;
+
+  const shaderCode = buildShader(
+    numLevels,
+    targetBits[0], targetBits[1], targetBits[2],
+    avoidBits[0],  avoidBits[1],  avoidBits[2],
+    tLen, searchDepth, avoidDepth, avoidEnabled,
+    forceFirstEnabled, forceFirstIdx, orderMatters,
+    targetIndices, maxSeeds
+  );
+
+  let pipeline, uniformBuffer, resultsBuffer, stagingBuffer, bindGroup;
+  try {
+    const module = gpuDevice.createShaderModule({ code: shaderCode });
+    pipeline = gpuDevice.createComputePipeline({
+      layout: 'auto',
+      compute: { module, entryPoint: 'main' }
+    });
+
+    uniformBuffer = gpuDevice.createBuffer({
+      size: 8, // 2×u32: seed_start, seed_end
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
+    // Separate atomic counter buffer (binding 1) and seeds buffer (binding 2)
+    counterBuffer = gpuDevice.createBuffer({
+      size: 4, // single atomic<u32>
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
+    });
+    resultsBuffer = gpuDevice.createBuffer({
+      size: maxSeeds * 4,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
+    });
+    stagingBuffer = gpuDevice.createBuffer({
+      size: (maxSeeds + 1) * 4, // +1 for counter
+      usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST
+    });
+    bindGroup = gpuDevice.createBindGroup({
+      layout: pipeline.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: { buffer: uniformBuffer } },
+        { binding: 1, resource: { buffer: counterBuffer } },
+        { binding: 2, resource: { buffer: resultsBuffer } }
+      ]
+    });
+  } catch(e) {
+    console.warn('[v3] GPU pipeline build failed:', e);
+    return false;
+  }
+
+  let seedStart = 1;
+  let totalFound = 0;
+  const foundSeeds = [];
+  const startTime = Date.now();
+
+  // ── Calibrate GPU_CHUNK on first search ──────────────────────────────────
+  // Uses mapAsync on a readback buffer as the completion barrier — this is a
+  // true GPU-done signal, unlike onSubmittedWorkDone() which resolves on submit.
+  // We run 3 warmup dispatches and take the median to avoid cold-start noise.
+  if (!GPU_CALIBRATED) {
+    const CAL_CHUNK = 65536;
+    const calStaging = gpuDevice.createBuffer({
+      size: 4,
+      usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST
+    });
+    const calTimes = [];
+    for (let pass = 0; pass < 3; pass++) {
+      // Clear counter
+      const clrEnc = gpuDevice.createCommandEncoder();
+      clrEnc.clearBuffer(counterBuffer);
+      gpuDevice.queue.submit([clrEnc.finish()]);
+      gpuDevice.queue.writeBuffer(uniformBuffer, 0, new Uint32Array([1, CAL_CHUNK + 1]));
+      const t0 = performance.now();
+      const calEnc = gpuDevice.createCommandEncoder();
+      const calPass = calEnc.beginComputePass();
+      calPass.setPipeline(pipeline);
+      calPass.setBindGroup(0, bindGroup);
+      calPass.dispatchWorkgroups(Math.ceil(CAL_CHUNK / WG_SIZE));
+      calPass.end();
+      // Copy one word to staging — mapAsync on this is our GPU-done barrier
+      calEnc.copyBufferToBuffer(counterBuffer, 0, calStaging, 0, 4);
+      gpuDevice.queue.submit([calEnc.finish()]);
+      await calStaging.mapAsync(GPUMapMode.READ);
+      const calMs = performance.now() - t0;
+      calStaging.unmap();
+      calTimes.push(calMs);
+    }
+    calStaging.destroy();
+    // Use median of 3 to ignore cold-start outlier
+    calTimes.sort((a, b) => a - b);
+    const medianMs = calTimes[1];
+    // Scale chunk to hit GPU_TARGET_MS per dispatch, clamped to safe range
+    GPU_CHUNK = Math.max(GPU_CHUNK_MIN, Math.min(GPU_CHUNK_MAX,
+      Math.round(CAL_CHUNK * (GPU_TARGET_MS / Math.max(medianMs, 0.5)) / GPU_CHUNK_MIN) * GPU_CHUNK_MIN
+    ));
+    GPU_CALIBRATED = true;
+    console.log('[v3] GPU calibration: ' + calTimes.map(function(t){ return t.toFixed(1)+'ms'; }).join(', ') + ' → median ' + medianMs.toFixed(1) + 'ms → chunk set to ' + GPU_CHUNK.toLocaleString());
+  }
+
+  async function dispatchChunk() {
+    if (!searching) { onDone(foundSeeds); return; }
+    if (seedStart > MAX_SEED) { onDone(foundSeeds); return; }
+
+    const seedEnd = Math.min(seedStart + GPU_CHUNK, MAX_SEED + 1);
+
+    // Zero the atomic counter before each chunk (GPU-side clear, no CPU transfer)
+    const clearEncoder = gpuDevice.createCommandEncoder();
+    clearEncoder.clearBuffer(counterBuffer);
+    gpuDevice.queue.submit([clearEncoder.finish()]);
+    // Write params
+    gpuDevice.queue.writeBuffer(uniformBuffer, 0, new Uint32Array([seedStart, seedEnd]));
+
+    const encoder = gpuDevice.createCommandEncoder();
+    const pass = encoder.beginComputePass();
+    pass.setPipeline(pipeline);
+    pass.setBindGroup(0, bindGroup);
+    pass.dispatchWorkgroups(Math.ceil(GPU_CHUNK / WG_SIZE));
+    pass.end();
+    // Copy counter (4 bytes) then seeds into staging buffer back to back
+    encoder.copyBufferToBuffer(counterBuffer, 0, stagingBuffer, 0, 4);
+    encoder.copyBufferToBuffer(resultsBuffer, 0, stagingBuffer, 4, maxSeeds * 4);
+    gpuDevice.queue.submit([encoder.finish()]);
+
+    await stagingBuffer.mapAsync(GPUMapMode.READ);
+    const mapped = stagingBuffer.getMappedRange();
+    const count = new Uint32Array(mapped, 0, 1)[0];
+    const seedData = new Uint32Array(mapped, 4, maxSeeds);
+    const collected = [];
+    for (let i = 0; i < count && collected.length + foundSeeds.length < maxSeeds; i++) {
+      const s = seedData[i];
+      if (s > 0 && s <= MAX_SEED) collected.push(s);
+    }
+    stagingBuffer.unmap();
+    // Process collected seeds after unmap
+
+    for (let i = 0; i < collected.length; i++) {
+      foundSeeds.push(collected[i]);
+      onFound(collected[i]);
+    }
+
+    if (foundSeeds.length >= maxSeeds) { onDone(foundSeeds); return; }
+
+    seedStart = seedEnd;
+    const elapsed = (Date.now() - startTime) / 1000;
+    const rate = elapsed > 0.5 ? Math.round(seedEnd / elapsed) : 0;
+    onProgress(seedEnd, MAX_SEED, rate);
+
+    // Yield to browser, then next chunk
+    setTimeout(dispatchChunk, 0);
+  }
+
+  dispatchChunk();
+  return true;
+}
+
 function startSearch() {
   var rushKey = document.getElementById('s-rush').value;
   var numLevels = (rushKey === 'violet' || rushKey === 'red' || rushKey === 'yellow') ? 8 : parseInt(rushKey);
@@ -590,8 +1006,11 @@ function startSearch() {
         return;
       }
       avoidSet[avoidParsed.indices[ai]] = true;
+      bitsetSet(_avoidBits, avoidParsed.indices[ai]);
     }
     avoidDepth = Math.min(avoidDepthVal, numLevels);
+  } else {
+    bitsetClear(_avoidBits);
   }
 
   // Force First Level
@@ -616,16 +1035,22 @@ function startSearch() {
     }
   }
 
-  // Build a plain-object set for O(1) lookup inside the hot loop
+  // Build plain-object set (for result highlighting) + bitset (for hot loop)
   var targetSet = {};
-  for (var i = 0; i < targetIndices.length; i++) targetSet[targetIndices[i]] = true;
+  bitsetClear(_targetBits);
+  for (var i = 0; i < targetIndices.length; i++) {
+    targetSet[targetIndices[i]] = true;
+    bitsetSet(_targetBits, targetIndices[i]);
+  }
   var tLen = targetIndices.length;
   var stopAt = orderMatters ? tLen : searchDepth;
 
   var multiMode = document.querySelector('input[name="resultmode"]:checked').value === 'multi';
   var maxSeeds = multiMode ? Math.max(2, parseInt(document.getElementById('s-maxseeds').value) || 5) : 1;
   var MAX_SEED = 2147483647;
-  var CHUNK    = 200000;   // seeds per frame — keeps UI at ~16ms chunks
+  var CHUNK         = 50000;   // initial conservative value — auto-calibrates after first tick
+  var CPU_TARGET_MS = 16;      // target ms per tick for ~60fps UI responsiveness
+  var cpuCalibrated = false;
   var seed     = 1;
   var foundSeeds = [];
   var startTime = Date.now();
@@ -642,7 +1067,48 @@ function startSearch() {
   document.getElementById('progress-speed').textContent = '';
   setStatus('0 / 2,147,483,647 seeds searched');
 
-  function tick() {
+  // ── Try GPU path first ────────────────────────────────────────────────────
+  var gpuParams = {
+    numLevels, targetBits: [_targetBits[0], _targetBits[1], _targetBits[2]],
+    avoidBits:  [_avoidBits[0],  _avoidBits[1],  _avoidBits[2]],
+    tLen, searchDepth, avoidDepth,
+    avoidEnabled, forceFirstEnabled, forceFirstIdx, orderMatters,
+    targetIndices, maxSeeds,
+    onFound: function(s) {
+      var order = fullShuffle(numLevels, s);
+      foundSeeds.push({ seed: s, order: order });
+      addSeedResult(s, order, targetSet, foundSeeds.length,
+        forceFirstEnabled ? forceFirstIdx : -1,
+        avoidEnabled ? avoidSet : {}, avoidEnabled ? avoidDepthVal : 0);
+    },
+    onProgress: function(done, total, rate) {
+      if (!searching) return;
+      var pct = Math.min(99, Math.round(done / total * 100));
+      document.getElementById('progress-fill').style.width = pct + '%';
+      document.getElementById('progress-pct').textContent  = pct + '%';
+      document.getElementById('progress-speed').textContent =
+        rate > 0 ? (rate >= 1e6 ? (rate/1e6).toFixed(1)+'M' : Math.round(rate/1000)+'K') + ' seeds/s ⚡GPU  (chunk ' + (GPU_CHUNK/1000).toFixed(0) + 'k)' : '';
+      setStatus(done.toLocaleString() + ' / 2,147,483,647 seeds searched');
+    },
+    onDone: function(seeds) {
+      searchDone();
+      setStatus(seeds.length > 0
+        ? 'Found ' + seeds.length + ' seed' + (seeds.length > 1 ? 's' : '') + '.'
+        : 'No matching seed found in full range.');
+    }
+  };
+
+  if (engineMode === 'gpu' && gpuReady) {
+    gpuSearch(gpuParams).then(function(didGpu) {
+      if (!didGpu) cpuTick(); // fallback if GPU path fails mid-search
+    });
+    return; // GPU path takes over
+  }
+
+  // CPU path — either user chose CPU or GPU unavailable
+  cpuTick();
+
+  function cpuTick() {
     if (!searching) return;
 
     var end = Math.min(seed + CHUNK, MAX_SEED + 1);
@@ -690,7 +1156,7 @@ function startSearch() {
         } else {
           foundCount = 0;
           for (var ci = 0; ci < searchDepth; ci++) {
-            if (targetSet[_arr[ci]]) foundCount++;
+            if (bitsetTest(_targetBits, _arr[ci])) foundCount++;
           }
           match = (foundCount === tLen);
         }
@@ -699,7 +1165,7 @@ function startSearch() {
       // Avoid check: none of the excluded levels may appear in first avoidDepth positions
       if (match && avoidEnabled) {
         for (var ai = 0; ai < avoidDepth; ai++) {
-          if (avoidSet[_arr[ai]]) { match = false; break; }
+          if (bitsetTest(_avoidBits, _arr[ai])) { match = false; break; }
         }
       }
 
@@ -728,6 +1194,17 @@ function startSearch() {
     document.getElementById('progress-speed').textContent = rate > 0 ? rate.toLocaleString()+'/s  |  ETA: '+etaStr : '';
     setStatus(total.toLocaleString() + ' / 2,147,483,647 seeds searched');
 
+    // ── Auto-calibrate CHUNK after first tick ──────────────────────────────
+    if (!cpuCalibrated) {
+      var tickMs = elapsed * 1000;
+      if (tickMs > 0) {
+        var scale = CPU_TARGET_MS / Math.max(tickMs, 1);
+        CHUNK = Math.max(10000, Math.min(500000, Math.round(CHUNK * scale / 10000) * 10000));
+        cpuCalibrated = true;
+        console.log('[v3] CPU calibration: ' + tickMs.toFixed(1) + 'ms for first tick → CHUNK set to ' + CHUNK.toLocaleString());
+      }
+    }
+
     if (seed > MAX_SEED) {
       searchDone();
       if (foundSeeds.length === 0) {
@@ -738,10 +1215,11 @@ function startSearch() {
       return;
     }
 
-    searchTimer = setTimeout(tick, 0);
-  }
+    searchTimer = setTimeout(cpuTick, 0);
+  } // end cpuTick
 
-  searchTimer = setTimeout(tick, 0);
+  // CPU entry: only reached when gpuReady is false
+  // (GPU path calls cpuTick() directly from gpuSearch().then())
 }
 
 function stopSearch() {
@@ -1116,6 +1594,7 @@ function toggleResultMode() {
 }
 
 function onRushChange(tab) {
+  GPU_CALIBRATED = false; // resets chunk calibration when rush changes
   var sel = document.getElementById(tab + '-rush');
   var rushKey = sel.value;
   var is8Level = (rushKey === 'violet' || rushKey === 'red' || rushKey === 'yellow');
@@ -1223,10 +1702,7 @@ function syncDepthToLevels() {
   if (count === 0) return;
   var depthEl = document.getElementById('s-depth');
   var current = parseInt(depthEl.value) || 1;
-  if (current < count) {
-    depthEl.value = count;
-  }
-  // Keep the min attribute in sync so the browser spinner won't go below count
+  if (current < count) depthEl.value = count;
   depthEl.min = Math.max(1, count);
 }
 
