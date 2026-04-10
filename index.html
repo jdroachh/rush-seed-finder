@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rush Seed Finder v3.3.2</title>
+<title>Rush Seed Finder v3.4.0</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -145,6 +145,7 @@
   .engine-status { font-size:11px; letter-spacing:1px; margin-left:auto; }
   .engine-status.ready  { color:#a78bfa; }
   .engine-status.unavail { color:var(--text-dim); }
+  .btn-small.active { background:var(--surface); color:var(--text); border-color:var(--text-dim); }
   /* Avoid / Excluded Levels */
   .avoid-wrap { display: none; margin-top: 14px; }
   .avoid-wrap.visible { display: block; }
@@ -182,7 +183,7 @@
 <body>
 <div class="container">
   <header>
-    <div class="eyebrow">// tool v3.3.2</div>
+    <div class="eyebrow">// tool v3.4.0</div>
     <h1>RUSH<br><span>SEED</span><br>FINDER</h1>
     <p class="subtitle">Find or generate level seeds for Neon White Heaven or Hell Rush. Uses the same seeded shuffle as the game engine.</p>
   </header>
@@ -191,6 +192,7 @@
     <button class="tab-btn" onclick="switchTab('generate',this)">Seed Parser</button>
     <button class="tab-btn" onclick="switchTab('splits',this)">Splits Updater</button>
     <button class="tab-btn" onclick="switchTab('standardize',this)">Standardize Splits</button>
+    <button class="tab-btn" onclick="switchTab('timer',this)">Run Timer</button>
   </div>
   <div class="tab-panel active" id="tab-search">
     <div class="row">
@@ -358,6 +360,10 @@
     <div id="sp-error" style="display:none;color:var(--accent2);font-size:14px;margin-top:12px;line-height:1.6;padding:10px 14px;border:1px solid var(--accent2);"></div>
     <button class="btn" onclick="generateSplits()">GENERATE SPLITS</button>
     <div class="result-box" id="splits-result">
+      <div style="display:flex;gap:0;margin-bottom:16px;">
+        <button class="btn-small active" id="sp-fmt-plain" onclick="spSetFormat('plain')" style="flex:1;padding:8px;font-size:12px;">Plain Seconds &mdash; LiveSplit / WSplit</button>
+        <button class="btn-small" id="sp-fmt-mmss" onclick="spSetFormat('mmss')" style="flex:1;padding:8px;font-size:12px;border-left:none;">MM:SS.mmm &mdash; Google Sheets</button>
+      </div>
       <div class="result-label">Reordered Splits &mdash; Seed <span id="splits-seed-display"></span></div>
       <div id="splits-gold-wrap" style="display:none;">
         <div class="result-label" style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;">
@@ -420,6 +426,10 @@
     <div id="std-error" style="display:none;color:var(--accent2);font-size:14px;margin-top:12px;line-height:1.6;padding:10px 14px;border:1px solid var(--accent2);"></div>
     <button class="btn" onclick="standardizeSplits()">STANDARDIZE SPLITS</button>
     <div class="result-box" id="std-result">
+      <div style="display:flex;gap:0;margin-bottom:16px;">
+        <button class="btn-small active" id="std-fmt-plain" onclick="stdSetFormat('plain')" style="flex:1;padding:8px;font-size:12px;">Plain Seconds &mdash; LiveSplit / WSplit</button>
+        <button class="btn-small" id="std-fmt-mmss" onclick="stdSetFormat('mmss')" style="flex:1;padding:8px;font-size:12px;border-left:none;">MM:SS.mmm &mdash; Google Sheets</button>
+      </div>
       <div class="result-label">Standardized Splits &mdash; Seed <span id="std-seed-display"></span></div>
       <div id="std-gold-wrap" style="display:none;">
         <div class="result-label" style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;">
@@ -438,8 +448,86 @@
     </div>
   </div>
 
+  <div class="tab-panel" id="tab-timer">
+
+    <div class="field">
+      <label class="section-label">Rush</label>
+      <select id="rt-rush" onchange="onRtRushChange()">
+        <option value="white">White / Mikey (96 levels)</option>
+        <option value="violet">Violet (8 levels)</option>
+        <option value="red">Red (8 levels)</option>
+        <option value="yellow">Yellow (8 levels)</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label class="section-label">Input Mode</label>
+      <div style="display:flex;gap:0;">
+        <button class="btn-small active" id="rt-mode-seed-btn" onclick="rtSetMode('seed')" style="flex:1;padding:10px;font-size:13px;">Load by Seed</button>
+        <button class="btn-small" id="rt-mode-manual-btn" onclick="rtSetMode('manual')" style="flex:1;padding:10px;font-size:13px;border-left:none;">Enter Manually</button>
+      </div>
+    </div>
+
+    <div id="rt-seed-panel">
+      <div class="field">
+        <label class="section-label">Seed Number</label>
+        <div style="display:flex;gap:10px;">
+          <input type="number" id="rt-seed" placeholder="e.g. 58685" min="1" max="2147483647" style="flex:1;">
+          <button class="btn-small" onclick="rtLoadSeed()" style="padding:10px 20px;font-size:13px;border-color:var(--accent);color:var(--accent);">LOAD SEED</button>
+        </div>
+        <div class="hint">Levels will appear in seed play order.</div>
+      </div>
+    </div>
+
+    <div class="field" id="rt-levels-panel" style="display:none;">
+      <label class="section-label" id="rt-levels-label">Level Order &amp; Split Times</label>
+      <div class="hint" style="margin-bottom:12px;" id="rt-levels-hint">Enter each level's cumulative split time. Times are subtracted to produce segment times.</div>
+      <table style="width:100%;border-collapse:collapse;">
+        <colgroup><col style="width:36px;"><col style="width:60%;"><col style="width:40%;"></colgroup>
+        <thead>
+          <tr>
+            <th style="font-size:11px;letter-spacing:3px;color:var(--text-dim);text-align:left;padding:0 0 8px;border-bottom:1px solid var(--border);"></th>
+            <th style="font-size:11px;letter-spacing:3px;color:var(--text-dim);text-align:left;padding:0 0 8px;border-bottom:1px solid var(--border);">Level</th>
+            <th style="font-size:11px;letter-spacing:3px;color:var(--text-dim);text-align:right;padding:0 0 8px;border-bottom:1px solid var(--border);">Split Time (MM:SS.mmm)</th>
+          </tr>
+        </thead>
+        <tbody id="rt-levels-body"></tbody>
+      </table>
+    </div>
+
+    <div id="rt-error" style="display:none;color:var(--accent2);font-size:14px;margin-top:12px;line-height:1.6;padding:10px 14px;border:1px solid var(--accent2);"></div>
+    <button class="btn" id="rt-calc-btn" onclick="rtCalculate()" style="display:none;">CALCULATE SPLITS</button>
+
+    <div id="rt-result" style="display:none;margin-top:32px;">
+      <div class="field" style="margin-bottom:16px;">
+        <label class="section-label">Output Format</label>
+        <div style="display:flex;gap:0;">
+          <button class="btn-small active" id="rt-fmt-plain" onclick="rtSetFormat('plain')" style="flex:1;padding:8px;font-size:12px;">Plain Seconds &mdash; LiveSplit / WSplit</button>
+          <button class="btn-small" id="rt-fmt-mmss" onclick="rtSetFormat('mmss')" style="flex:1;padding:8px;font-size:12px;border-left:none;">MM:SS.mmm &mdash; Google Sheets</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <span class="result-label">Segment Times</span>
+            <button class="btn-small" onclick="rtCopy('rt-times-out', this)">COPY</button>
+          </div>
+          <textarea id="rt-times-out" rows="10" readonly style="width:100%;background:var(--bg);border:1px solid var(--border);color:#ffe066;font-family:var(--mono);font-size:16px;padding:12px 16px;outline:none;resize:vertical;"></textarea>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <span class="result-label">Level Order</span>
+            <button class="btn-small" onclick="rtCopy('rt-levels-out', this)">COPY</button>
+          </div>
+          <textarea id="rt-levels-out" rows="10" readonly style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--accent);font-family:var(--mono);font-size:16px;padding:12px 16px;outline:none;resize:vertical;"></textarea>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
 </div>
-<div class="corner-deco">SEED ENGINE // v3.3.2</div>
+<div class="corner-deco">SEED ENGINE // v3.4.0</div>
 <script>
 // ── C# System.Random port ──────────────────────────────────────────────────
 var MBIG = 2147483647;
@@ -1441,7 +1529,8 @@ function generateSplits() {
 
   if (goldOut.length) {
     trimTrailing(goldOut);
-    document.getElementById('splits-gold-out').value = goldOut.join('\n');
+    spLastGold = goldOut.slice();
+    document.getElementById('splits-gold-out').value = goldOut.map(function(t){return splitsFormatTime(t,spFmt);}).join('\n');
     document.getElementById('splits-gold-wrap').style.display = 'block';
   } else {
     document.getElementById('splits-gold-wrap').style.display = 'none';
@@ -1449,7 +1538,8 @@ function generateSplits() {
 
   if (segOut.length) {
     trimTrailing(segOut);
-    document.getElementById('splits-seg-out').value = segOut.join('\n');
+    spLastSeg = segOut.slice();
+    document.getElementById('splits-seg-out').value = segOut.map(function(t){return splitsFormatTime(t,spFmt);}).join('\n');
     document.getElementById('splits-seg-wrap').style.display = 'block';
   } else {
     document.getElementById('splits-seg-wrap').style.display = 'none';
@@ -1570,7 +1660,8 @@ function standardizeSplits() {
 
   if (goldOut.length) {
     trimTrailing(goldOut);
-    document.getElementById('std-gold-out').value = goldOut.join('\n');
+    stdLastGold = goldOut.slice();
+    document.getElementById('std-gold-out').value = goldOut.map(function(t){return splitsFormatTime(t,stdFmt);}).join('\n');
     document.getElementById('std-gold-wrap').style.display = 'block';
   } else {
     document.getElementById('std-gold-wrap').style.display = 'none';
@@ -1578,7 +1669,8 @@ function standardizeSplits() {
 
   if (segOut.length) {
     trimTrailing(segOut);
-    document.getElementById('std-seg-out').value = segOut.join('\n');
+    stdLastSeg = segOut.slice();
+    document.getElementById('std-seg-out').value = segOut.map(function(t){return splitsFormatTime(t,stdFmt);}).join('\n');
     document.getElementById('std-seg-wrap').style.display = 'block';
   } else {
     document.getElementById('std-seg-wrap').style.display = 'none';
@@ -1721,6 +1813,233 @@ function showSplitsError(tabId, msg) {
 }
 
 function setStatus(msg) { document.getElementById('status-text').textContent = msg; }
+
+// ════════════════════════════════════════════════════════════════════════════
+// SPLITS FORMAT TOGGLES
+// ════════════════════════════════════════════════════════════════════════════
+var spFmt  = 'plain';
+var stdFmt = 'plain';
+var spLastGold=[], spLastSeg=[];
+var stdLastGold=[], stdLastSeg=[];
+
+function parseSplitTimeToSecs(raw) {
+  var s = (raw||'').trim();
+  var m = s.match(/^(\d+):(\d{1,2})(?:\.(\d+))?$/);
+  if (m) return parseInt(m[1])*60 + parseInt(m[2]) + (m[3]?parseFloat('0.'+m[3]):0);
+  var m2 = s.match(/^(\d+)(?:\.(\d+))?$/);
+  if (m2) return parseInt(m2[1]) + (m2[2]?parseFloat('0.'+m2[2]):0);
+  return null;
+}
+
+function splitsFormatTime(raw, fmt) {
+  var secs = parseSplitTimeToSecs(raw);
+  if (secs === null) return raw;
+  if (fmt === 'mmss') {
+    var mins = Math.floor(secs/60), s = secs - mins*60;
+    var ss = s.toFixed(3); if (s<10) ss='0'+ss;
+    return (mins<10?'0'+mins:''+mins)+':'+ss;
+  }
+  if (secs < 60) return secs.toFixed(3).replace(/\.?0+$/,'') || '0';
+  var mins2=Math.floor(secs/60), s2=secs-mins2*60;
+  var ss2=s2.toFixed(3); if(s2<10) ss2='0'+ss2;
+  return mins2+':'+ss2;
+}
+
+function spSetFormat(fmt) {
+  spFmt = fmt;
+  document.getElementById('sp-fmt-plain').classList.toggle('active', fmt==='plain');
+  document.getElementById('sp-fmt-mmss').classList.toggle('active', fmt==='mmss');
+  if (spLastGold.length) document.getElementById('splits-gold-out').value = spLastGold.map(function(t){return splitsFormatTime(t,fmt);}).join('\n');
+  if (spLastSeg.length)  document.getElementById('splits-seg-out').value  = spLastSeg.map(function(t){return splitsFormatTime(t,fmt);}).join('\n');
+}
+
+function stdSetFormat(fmt) {
+  stdFmt = fmt;
+  document.getElementById('std-fmt-plain').classList.toggle('active', fmt==='plain');
+  document.getElementById('std-fmt-mmss').classList.toggle('active', fmt==='mmss');
+  if (stdLastGold.length) document.getElementById('std-gold-out').value = stdLastGold.map(function(t){return splitsFormatTime(t,fmt);}).join('\n');
+  if (stdLastSeg.length)  document.getElementById('std-seg-out').value  = stdLastSeg.map(function(t){return splitsFormatTime(t,fmt);}).join('\n');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// RUN TIMER
+// ════════════════════════════════════════════════════════════════════════════
+var rtMode='seed', rtRush='white', rtFmt='plain', rtLastSegs=[];
+
+var RT_ALIASES = {
+  'glort':'glass port','ttt':'the third temple','ct':'the clocktower',
+  'clocktower':'the clocktower','ase':'all seeing eye',
+  'rsi':'resident saw i','rs1':'resident saw i',
+  'rsii':'resident saw ii','rs2':'resident saw ii',
+  'eti':'elevate traversal i','et1':'elevate traversal i',
+  'etii':'elevate traversal ii','et2':'elevate traversal ii',
+  'boof trav':'book of life traversal','sfp':'sunset flip powerbomb',
+  'bm':'balloon mountain','cg':'climbing gym',
+  'fish sup':'fisherman suplex','fish soup':'fisherman suplex',
+};
+
+function onRtRushChange() {
+  rtRush = document.getElementById('rt-rush').value;
+  rtClearResults(); rtClearError();
+  if (rtMode==='manual') rtBuildManualRows(); else rtHideLevels();
+}
+
+function rtSetMode(mode) {
+  rtMode = mode;
+  document.getElementById('rt-mode-seed-btn').classList.toggle('active', mode==='seed');
+  document.getElementById('rt-mode-manual-btn').classList.toggle('active', mode==='manual');
+  document.getElementById('rt-seed-panel').style.display = mode==='seed'?'block':'none';
+  rtClearResults(); rtClearError();
+  if (mode==='manual') rtBuildManualRows(); else rtHideLevels();
+}
+
+function rtHideLevels() {
+  document.getElementById('rt-levels-panel').style.display='none';
+  document.getElementById('rt-calc-btn').style.display='none';
+}
+
+function rtShowLevels() {
+  document.getElementById('rt-levels-panel').style.display='block';
+  document.getElementById('rt-calc-btn').style.display='block';
+}
+
+function rtRushPlaceholder() {
+  var lvls=RUSH_LEVELS[rtRush];
+  return 'e.g. '+lvls[0]+', '+lvls[1]+'...';
+}
+
+function rtBuildSeedRows(names) {
+  document.getElementById('rt-levels-label').textContent='Level Order & Split Times';
+  document.getElementById('rt-levels-hint').textContent='Levels are in seed play order. Enter cumulative split time at the end of each level.';
+  var tbody=document.getElementById('rt-levels-body');
+  tbody.innerHTML='';
+  names.forEach(function(name,i){
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td><span style="font-size:11px;color:var(--text-dim);display:inline-block;width:28px;text-align:right;padding-right:10px;">'+(i+1)+'</span></td>'+
+      '<td><input type="text" value="'+rtEsc(name)+'" readonly tabindex="-1" style="background:transparent;border:none;color:var(--text);font-family:var(--mono);font-size:14px;padding:8px 4px;width:100%;outline:none;"></td>'+
+      '<td><input type="text" class="rt-time-input" placeholder="e.g. 19.546 or 1:04.565" style="background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:14px;padding:8px 10px;width:100%;outline:none;text-align:right;transition:border-color 0.15s;"></td>';
+    tbody.appendChild(tr);
+  });
+  rtShowLevels();
+}
+
+function rtBuildManualRows() {
+  var levels=RUSH_LEVELS[rtRush];
+  document.getElementById('rt-levels-label').textContent='Levels & Split Times';
+  document.getElementById('rt-levels-hint').textContent='Enter each level name and its cumulative split time.';
+  var tbody=document.getElementById('rt-levels-body');
+  tbody.innerHTML='';
+  var ph=rtRushPlaceholder();
+  levels.forEach(function(_,i){
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td><span style="font-size:11px;color:var(--text-dim);display:inline-block;width:28px;text-align:right;padding-right:10px;">'+(i+1)+'</span></td>'+
+      '<td><input type="text" class="rt-name-input" placeholder="'+ph+'" style="background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:14px;padding:8px 10px;width:100%;outline:none;transition:border-color 0.15s;"></td>'+
+      '<td><input type="text" class="rt-time-input" placeholder="e.g. 19.546 or 1:04.565" style="background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:14px;padding:8px 10px;width:100%;outline:none;text-align:right;transition:border-color 0.15s;"></td>';
+    tbody.appendChild(tr);
+  });
+  rtShowLevels();
+}
+
+function rtLoadSeed() {
+  rtClearError(); rtClearResults();
+  var seed=parseInt(document.getElementById('rt-seed').value);
+  if (!seed||seed<1||seed>2147483647){rtShowError('Please enter a valid seed number.');return;}
+  rtRush=document.getElementById('rt-rush').value;
+  var levels=RUSH_LEVELS[rtRush];
+  var order=fullShuffle(levels.length,seed);
+  rtBuildSeedRows(order.map(function(i){return levels[i];}));
+}
+
+function rtParseTime(raw) {
+  var s=raw.trim(); if(!s)return null;
+  var m=s.match(/^(\d+):(\d{1,2})(?:\.(\d+))?$/);
+  if(m)return parseInt(m[1])*60+parseInt(m[2])+(m[3]?parseFloat('0.'+m[3]):0);
+  var m2=s.match(/^(\d+)(?:\.(\d+))?$/);
+  if(m2)return parseInt(m2[1])+(m2[2]?parseFloat('0.'+m2[2]):0);
+  return null;
+}
+
+function rtFormatTime(secs) {
+  if(rtFmt==='mmss'){
+    var mins=Math.floor(secs/60), s=secs-mins*60;
+    var ss=s.toFixed(3); if(s<10)ss='0'+ss;
+    return (mins<10?'0'+mins:''+mins)+':'+ss;
+  }
+  return secs.toFixed(3).replace(/\.?0+$/,'')||'0';
+}
+
+function rtValidateName(raw) {
+  var q=raw.trim().toLowerCase(); if(!q)return null;
+  var levels=RUSH_LEVELS[rtRush];
+  for(var i=0;i<levels.length;i++) if(levels[i].toLowerCase()===q)return levels[i];
+  if(RT_ALIASES[q]){var t=RT_ALIASES[q];for(var i=0;i<levels.length;i++)if(levels[i].toLowerCase()===t)return levels[i];}
+  var matches=levels.filter(function(l){return l.toLowerCase().indexOf(q)!==-1;});
+  if(matches.length===1)return matches[0];
+  return null;
+}
+
+function rtCalculate() {
+  rtClearError(); rtClearResults();
+  var timeEls=document.querySelectorAll('#rt-levels-body .rt-time-input');
+  var nameEls=document.querySelectorAll('#rt-levels-body .rt-name-input');
+  var isManual=rtMode==='manual';
+  var names=[],times=[],errors=[];
+  timeEls.forEach(function(el){el.style.borderColor='';});
+  if(nameEls.length)nameEls.forEach(function(el){el.style.borderColor='';});
+  for(var i=0;i<timeEls.length;i++){
+    var tRaw=timeEls[i].value, nRaw=nameEls.length?nameEls[i].value:null;
+    if(isManual&&!tRaw.trim()&&(!nRaw||!nRaw.trim()))continue;
+    var displayName;
+    if(isManual){
+      var v=rtValidateName(nRaw||'');
+      if(!v){nameEls[i].style.borderColor='var(--accent2)';errors.push('Row '+(i+1)+': "'+nRaw+'" is not a recognised level.');continue;}
+      displayName=v;
+    }else{
+      displayName=document.querySelectorAll('#rt-levels-body input[readonly]')[i].value;
+    }
+    var t=rtParseTime(tRaw);
+    if(t===null){timeEls[i].style.borderColor='var(--accent2)';errors.push('Row '+(i+1)+' ('+displayName+'): invalid time "'+tRaw+'".');continue;}
+    names.push(displayName);times.push(t);
+  }
+  if(errors.length){rtShowError(errors.join('<br>'));return;}
+  if(!times.length){rtShowError('Please enter at least one level and time.');return;}
+  for(var i=1;i<times.length;i++){
+    if(times[i]<=times[i-1]){
+      timeEls[i].style.borderColor='var(--accent2)';
+      rtShowError('Row '+(i+1)+' ('+names[i]+'): split time must be greater than the previous ('+rtFormatTime(times[i-1])+').');
+      return;
+    }
+  }
+  rtLastSegs=times.map(function(t,i){return Math.round((i===0?t:t-times[i-1])*1000)/1000;});
+  document.getElementById('rt-times-out').value=rtLastSegs.map(rtFormatTime).join('\n');
+  document.getElementById('rt-levels-out').value=names.join('\n');
+  document.getElementById('rt-result').style.display='block';
+}
+
+function rtSetFormat(fmt) {
+  rtFmt=fmt;
+  document.getElementById('rt-fmt-plain').classList.toggle('active',fmt==='plain');
+  document.getElementById('rt-fmt-mmss').classList.toggle('active',fmt==='mmss');
+  if(rtLastSegs.length)document.getElementById('rt-times-out').value=rtLastSegs.map(rtFormatTime).join('\n');
+}
+
+function rtCopy(id,btn){
+  var val=document.getElementById(id).value; if(!val)return;
+  navigator.clipboard.writeText(val).then(function(){
+    var orig=btn.textContent;btn.textContent='COPIED';
+    setTimeout(function(){btn.textContent=orig;},1500);
+  });
+}
+
+function rtShowError(msg){var el=document.getElementById('rt-error');el.innerHTML=msg;el.style.display='block';}
+function rtClearError(){var el=document.getElementById('rt-error');el.innerHTML='';el.style.display='none';}
+function rtClearResults(){
+  document.getElementById('rt-result').style.display='none';
+  document.getElementById('rt-times-out').value='';
+  document.getElementById('rt-levels-out').value='';
+  rtLastSegs=[];
+}
+function rtEsc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 </script>
 </body>
 </html>
