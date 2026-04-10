@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rush Seed Finder v3.4.1</title>
+<title>Neon White Rush Toolbox v3.4.1</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -183,9 +183,9 @@
 <body>
 <div class="container">
   <header>
-    <div class="eyebrow">// tool v3.4.1</div>
-    <h1>RUSH<br><span>SEED</span><br>FINDER</h1>
-    <p class="subtitle">Find or generate level seeds for Neon White Heaven or Hell Rush. Uses the same seeded shuffle as the game engine.</p>
+    <div class="eyebrow">// neon white // rush toolbox</div>
+    <h1>RUSH<br><span>TOOL</span><br>BOX</h1>
+    <p class="subtitle" id="page-subtitle">Find or generate level seeds for Neon White Heaven or Hell Rush. Uses the same seeded shuffle as the game engine.</p>
   </header>
   <div class="tabs">
     <button class="tab-btn active" onclick="switchTab('search',this)">Find Seed</button>
@@ -527,7 +527,7 @@
   </div>
 
 </div>
-<div class="corner-deco">SEED ENGINE // v3.4.1</div>
+<div class="corner-deco">RUSH TOOLBOX // v3.4.1</div>
 <script>
 // ── C# System.Random port ──────────────────────────────────────────────────
 var MBIG = 2147483647;
@@ -1426,11 +1426,21 @@ function generateOrder() {
 }
 
 // ── Tabs ───────────────────────────────────────────────────────────────────
+var TAB_SUBTITLES = {
+  'search':      'Search up to 2.1 billion seeds to find ones where your desired levels appear early. Supports all four rush types.',
+  'generate':    'Enter any seed number to instantly see the full level order it produces for the selected rush.',
+  'splits':      'Paste your gold and segment splits in standard level order and reorder them to match a specific seed\u2019s play order.',
+  'standardize': 'Paste splits recorded in seed play order and convert them back to standard level order for your splits file.',
+  'timer':       'Time your runs by entering cumulative split times per level. Outputs segment times ready for LiveSplit or Google Sheets.',
+};
+
 function switchTab(tab, btn) {
   document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active');});
   document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
   document.getElementById('tab-'+tab).classList.add('active');
   btn.classList.add('active');
+  var sub = document.getElementById('page-subtitle');
+  if (sub && TAB_SUBTITLES[tab]) sub.textContent = TAB_SUBTITLES[tab];
 }
 
 // ── Splits Updater ──────────────────────────────────────────────────────────
