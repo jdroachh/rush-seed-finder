@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rush Seed Finder v3.4.0</title>
+<title>Rush Seed Finder v3.4.1</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -183,7 +183,7 @@
 <body>
 <div class="container">
   <header>
-    <div class="eyebrow">// tool v3.4.0</div>
+    <div class="eyebrow">// tool v3.4.1</div>
     <h1>RUSH<br><span>SEED</span><br>FINDER</h1>
     <p class="subtitle">Find or generate level seeds for Neon White Heaven or Hell Rush. Uses the same seeded shuffle as the game engine.</p>
   </header>
@@ -453,7 +453,7 @@
     <div class="field">
       <label class="section-label">Rush</label>
       <select id="rt-rush" onchange="onRtRushChange()">
-        <option value="white">White / Mikey (96 levels)</option>
+        <option value="96">White / Mikey (96 levels)</option>
         <option value="violet">Violet (8 levels)</option>
         <option value="red">Red (8 levels)</option>
         <option value="yellow">Yellow (8 levels)</option>
@@ -527,7 +527,7 @@
   </div>
 
 </div>
-<div class="corner-deco">SEED ENGINE // v3.4.0</div>
+<div class="corner-deco">SEED ENGINE // v3.4.1</div>
 <script>
 // ── C# System.Random port ──────────────────────────────────────────────────
 var MBIG = 2147483647;
@@ -1864,7 +1864,7 @@ function stdSetFormat(fmt) {
 // ════════════════════════════════════════════════════════════════════════════
 // RUN TIMER
 // ════════════════════════════════════════════════════════════════════════════
-var rtMode='seed', rtRush='white', rtFmt='plain', rtLastSegs=[];
+var rtMode='seed', rtRush='96', rtFmt='plain', rtLastSegs=[];
 
 var RT_ALIASES = {
   'glort':'glass port','ttt':'the third temple','ct':'the clocktower',
@@ -1946,7 +1946,8 @@ function rtLoadSeed() {
   if (!seed||seed<1||seed>2147483647){rtShowError('Please enter a valid seed number.');return;}
   rtRush=document.getElementById('rt-rush').value;
   var levels=RUSH_LEVELS[rtRush];
-  var order=fullShuffle(levels.length,seed);
+  var numLevels=(rtRush==='violet'||rtRush==='red'||rtRush==='yellow')?8:96;
+  var order=fullShuffle(numLevels,seed);
   rtBuildSeedRows(order.map(function(i){return levels[i];}));
 }
 
