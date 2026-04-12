@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Neon White Rush Toolbox v3.4.1</title>
+<title>Neon White Rush Toolbox v3.7.3</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -146,6 +146,25 @@
   .engine-status.ready  { color:#a78bfa; }
   .engine-status.unavail { color:var(--text-dim); }
   .btn-small.active { background:var(--surface); color:var(--text); border-color:var(--text-dim); }
+  .btn-small.medal-off { border-color:var(--border); color:var(--text-dim); }
+  .btn-small.medal-on  { background:var(--accent); color:var(--bg); border-color:var(--accent); font-weight:700; }
+  .btn-small.medal-on:hover { background:#00ffb3; border-color:#00ffb3; }
+  /* Medal colours — community medals */
+  .medal-sapphire    { color:#363de2 !important; }
+  .medal-topaz       { display:block; width:fit-content; background:linear-gradient(to right,#ff4500 0%,#ffd700 50%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .medal-blooddiamond{ display:block; width:fit-content; background:linear-gradient(to right,#660000 0%,#FF003D 50%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .medal-amethyst { color:#c971ff !important; }
+  .medal-emerald  { color:#81c784 !important; }
+  /* Medal colours — standard medals */
+  .medal-bronze { color:#cd7f32 !important; }
+  .medal-silver { color:#c0c0c0 !important; }
+  .medal-gold   { color:#ffd700 !important; }
+  .medal-ace    { color:#8de4e0 !important; }
+  .medal-dev    { color:#ff4444 !important; }
+  /* Medal view div — mirrors textarea styling */
+  .medal-view { display:none; width:100%;background:var(--bg);border:1px solid var(--border);font-family:var(--mono);font-size:16px;padding:12px 16px;resize:vertical;margin-top:6px;overflow-y:auto;line-height:1.2; }
+  .medal-view.visible { display:block; }
+  .medal-view span { display:block; line-height:1.2; margin:0; padding:0; }
   /* Avoid / Excluded Levels */
   .avoid-wrap { display: none; margin-top: 14px; }
   .avoid-wrap.visible { display: block; }
@@ -319,7 +338,10 @@
     <div class="result-box" id="gen-result">
       <div class="result-label">Seed</div>
       <div class="result-value" id="gen-seed-display"></div>
-      <div class="result-label" style="margin-top:8px">Full Level Order</div>
+      <div class="result-label" style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;">
+        <span>Full Level Order</span>
+        <button class="btn-small" onclick="copyGenSequence()">COPY</button>
+      </div>
       <div class="sequence-list" id="gen-sequence"></div>
     </div>
   </div>
@@ -368,16 +390,20 @@
       <div id="splits-gold-wrap" style="display:none;">
         <div class="result-label" style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;">
           <span>Gold Splits</span>
+          <button class="btn-small" id="sp-gold-medal-btn" onclick="toggleMedalView('splits-gold-out', 'sp-gold-medal-btn')">MEDALS OFF</button>
           <button class="btn-small" onclick="copySplits('splits-gold-out')">COPY</button>
         </div>
         <textarea id="splits-gold-out" rows="8" readonly style="width:100%;background:var(--bg);border:1px solid var(--border);color:#ffe066;font-family:var(--mono);font-size:16px;padding:12px 16px;outline:none;resize:vertical;margin-top:6px;"></textarea>
+        <div class="medal-view" id="splits-gold-out-medal"></div>
       </div>
       <div id="splits-seg-wrap" style="display:none;">
         <div class="result-label" style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;">
           <span>Segment Splits</span>
+          <button class="btn-small" id="sp-seg-medal-btn" onclick="toggleMedalView('splits-seg-out', 'sp-seg-medal-btn')">MEDALS OFF</button>
           <button class="btn-small" onclick="copySplits('splits-seg-out')">COPY</button>
         </div>
         <textarea id="splits-seg-out" rows="8" readonly style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:16px;padding:12px 16px;outline:none;resize:vertical;margin-top:6px;"></textarea>
+        <div class="medal-view" id="splits-seg-out-medal"></div>
       </div>
       <div>
         <div class="result-label" style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;">
@@ -434,16 +460,20 @@
       <div id="std-gold-wrap" style="display:none;">
         <div class="result-label" style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;">
           <span>Gold Splits</span>
+          <button class="btn-small" id="std-gold-medal-btn" onclick="toggleMedalView('std-gold-out', 'std-gold-medal-btn')">MEDALS OFF</button>
           <button class="btn-small" onclick="copySplits('std-gold-out')">COPY</button>
         </div>
         <textarea id="std-gold-out" rows="8" readonly style="width:100%;background:var(--bg);border:1px solid var(--border);color:#ffe066;font-family:var(--mono);font-size:16px;padding:12px 16px;outline:none;resize:vertical;margin-top:6px;"></textarea>
+        <div class="medal-view" id="std-gold-out-medal"></div>
       </div>
       <div id="std-seg-wrap" style="display:none;">
         <div class="result-label" style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;">
           <span>Segment Splits</span>
+          <button class="btn-small" id="std-seg-medal-btn" onclick="toggleMedalView('std-seg-out', 'std-seg-medal-btn')">MEDALS OFF</button>
           <button class="btn-small" onclick="copySplits('std-seg-out')">COPY</button>
         </div>
         <textarea id="std-seg-out" rows="8" readonly style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:16px;padding:12px 16px;outline:none;resize:vertical;margin-top:6px;"></textarea>
+        <div class="medal-view" id="std-seg-out-medal"></div>
       </div>
     </div>
   </div>
@@ -510,9 +540,11 @@
         <div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
             <span class="result-label">Segment Times</span>
+            <button class="btn-small" id="rt-times-medal-btn" onclick="toggleMedalView('rt-times-out', 'rt-times-medal-btn')">MEDALS OFF</button>
             <button class="btn-small" onclick="rtCopy('rt-times-out', this)">COPY</button>
           </div>
           <textarea id="rt-times-out" rows="10" readonly style="width:100%;background:var(--bg);border:1px solid var(--border);color:#ffe066;font-family:var(--mono);font-size:16px;padding:12px 16px;outline:none;resize:vertical;"></textarea>
+          <div class="medal-view" id="rt-times-out-medal"></div>
         </div>
         <div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
@@ -527,7 +559,7 @@
   </div>
 
 </div>
-<div class="corner-deco">RUSH TOOLBOX // v3.4.1</div>
+<div class="corner-deco">RUSH TOOLBOX // v3.7.3</div>
 <script>
 // ── C# System.Random port ──────────────────────────────────────────────────
 var MBIG = 2147483647;
@@ -618,7 +650,129 @@ var LEVEL_ALIASES = {
   'rsi':             'resident saw i',
   'rs1':             'resident saw i',
   'rsii':            'resident saw ii',
-  'rs2':             'resident saw ii'
+  'rs2':             'resident saw ii',
+  // ── In-game code names ───────────────────────────────────────────────────
+  'tut_movement': 'movement',
+  'tut_shootingrange': 'pummel',
+  'slugger': 'gunner',
+  'tut_frog': 'cascade',
+  'tut_jump': 'elevate',
+  'grid_tut_balloon': 'bounce',
+  'tut_bomb2': 'purify',
+  'tut_bombjump': 'climb',
+  'tut_fasttrack': 'fasttrack',
+  'grid_port': 'glass port',
+  'grid_pagoda': 'take flight',
+  'tut_rifle': 'godspeed',
+  'tut_riflejock': 'dasher',
+  'tut_dashenemy': 'thrasher',
+  'grid_jumpdash': 'outstretched',
+  'grid_smackdown': 'smackdown',
+  'grid_meaty_balloons': 'catwalk',
+  'grid_fast_balloon': 'fastlane',
+  'grid_dragon2': 'distinguish',
+  'grid_dashdance': 'dancer',
+  'tut_guardian': 'guardian',
+  'tut_uzi': 'stomp',
+  'tut_jumper': 'jumper',
+  'tut_bomb': 'dash tower',
+  'grid_descend': 'descent',
+  'grid_stamperout': 'driller',
+  'grid_cruise': 'canals',
+  'grid_sprint': 'sprint',
+  'grid_mountain': 'mountain',
+  'grid_superkinetic': 'superkinetic',
+  'grid_arrival': 'arrival',
+  'floating': 'forgotten city',
+  'grid_boss_yellow': 'the clocktower',
+  'grid_hophop': 'fireball',
+  'grid_ringer_tutorial': 'ringer',
+  'grid_ringer_exploration': 'cleaner',
+  'grid_hopscotch': 'warehouse',
+  'grid_boom': 'boom',
+  'grid_snake_in_my_boot': 'streets',
+  'grid_flock': 'steps',
+  'grid_bombs_ahoy': 'demolition',
+  'grid_arcs': 'arcs',
+  'grid_apartment': 'apartment',
+  'tut_tripwire': 'hanging gardens',
+  'grid_tangled': 'tangled',
+  'grid_hunt': 'waterworks',
+  'grid_cannons': 'killswitch',
+  'grid_falling': 'falling',
+  'tut_shocker2': 'shocker',
+  'tut_shocker': 'bouquet',
+  'grid_prepare': 'prepare',
+  'grid_tripmaze': 'triptrack',
+  'grid_race': 'race',
+  'tut_forcefield2': 'bubble',
+  'grid_shield': 'shield',
+  'sa l vage2': 'overlook',
+  'grid_vertical': 'pop',
+  'grid_minefield': 'minefield',
+  'tut_mimic': 'mimic',
+  'grid_mimicpop': 'trigger',
+  'grid_swarm': 'greenhouse',
+  'grid_switch': 'sweep',
+  'grid_traps2': 'fuse',
+  'tut_rocketjump': "heaven's edge",
+  'tut_zipline': 'zipline',
+  'grid_climbang': 'swing',
+  'grid_rocketuzi': 'chute',
+  'grid_crashland': 'crash',
+  'grid_escalate': 'ascent',
+  'grid_spiderclaus': 'straightaway',
+  'grid_firecracker_2': 'firecracker',
+  'grid_spiderman': 'streak',
+  'grid_destruction': 'mirror',
+  'grid_heat': 'escalation',
+  'grid_bolt': 'bolt',
+  'grid_pon': 'godstreak',
+  'grid_charge': 'plunge',
+  'grid_mimicfinale': 'mayhem',
+  'grid_barrage': 'barrage',
+  'grid_1gun': 'estate',
+  'grid_heck': 'trapwire',
+  'grid_antfarm': 'ricochet',
+  'grid_fortress': 'fortress',
+  'grid_godtemple_entry': 'holy ground',
+  'grid_boss_godsdeathtemple': 'the third temple',
+  'grid_exterminator': 'spree',
+  'grid_fever': 'breakthrough',
+  'grid_skipslide': 'glide',
+  'grid_closer': 'closer',
+  'grid_hike': 'hike',
+  'grid_skip': 'switch',
+  'grid_ceiling': 'access',
+  'grid_boop': 'congregation',
+  'grid_triprap': 'sequence',
+  'grid_ziprap': 'marathon',
+  'tut_origin': 'sacrifice',
+  'grid_boss_rapture': 'absolution',
+  'sidequest_obstacle_pistol': 'elevate traversal i',
+  'sidequest_obstacle_pistol_shoot': 'elevate traversal ii',
+  'sidequest_obstacle_machinegun': 'purify traversal',
+  'sidequest_obstacle_rifle_2': 'godspeed traversal',
+  'sidequest_obstacle_uzi2': 'stomp traversal',
+  'sidequest_obstacle_shotgun': 'fireball traversal',
+  'sidequest_obstacle_rocketlauncher': 'dominion traversal',
+  'sidequest_rapture_quest': 'book of life traversal',
+  'sidequest_dodger': 'doghouse',
+  'grid_glasspath': 'choker',
+  'grid_glasspath2': 'chain',
+  'grid_hellvator': 'hellevator',
+  'grid_glasspath3': 'razor',
+  'sidequest_all_seeing_eye': 'all seeing eye',
+  'sidequest_residentsawb': 'resident saw i',
+  'sidequest_residentsaw': 'resident saw ii',
+  'sidequest_sunset_flip_powerbomb': 'sunset flip powerbomb',
+  'grid_balloonlair': 'balloon mountain',
+  'sidequest_barrel_climb': 'climbing gym',
+  'sidequest_fisherman_suplex': 'fisherman suplex',
+  'sidequest_stf': 'stf',
+  'sidequest_arenasixnine': 'arena',
+  'sidequest_attitude_adjustment': 'attitude adjustment',
+  'sidequest_rocketgodz': 'rocket'
 };
 
 function findLevelByName(query) {
@@ -1423,6 +1577,8 @@ function generateOrder() {
     list.appendChild(div);
   }
   document.getElementById('gen-result').classList.add('visible');
+  // Store plain-text order for copy
+  genSequenceText = order.map(function(idx){ return levelLabel(idx); }).join('\n');
 }
 
 // ── Tabs ───────────────────────────────────────────────────────────────────
@@ -1539,6 +1695,7 @@ function generateSplits() {
 
   if (goldOut.length) {
     trimTrailing(goldOut);
+    resetMedalViews(['splits-gold-out','splits-seg-out']);
     spLastGold = goldOut.slice();
     document.getElementById('splits-gold-out').value = goldOut.map(function(t){return splitsFormatTime(t,spFmt);}).join('\n');
     document.getElementById('splits-gold-wrap').style.display = 'block';
@@ -1560,9 +1717,26 @@ function generateSplits() {
   for (var pos = 0; pos < order.length; pos++) {
     namesOut.push(levelLabel(order[pos]));
   }
+  spLevelNames = namesOut.slice();
   document.getElementById('splits-names-out').value = namesOut.join('\n');
 
   document.getElementById('splits-result').classList.add('visible');
+}
+
+var genSequenceText = '';
+
+function copyGenSequence() {
+  if (!genSequenceText) return;
+  navigator.clipboard.writeText(genSequenceText).then(function() {
+    var btns = document.querySelectorAll('#gen-result .btn-small');
+    btns.forEach(function(btn) {
+      if (btn.textContent === 'COPY') {
+        var orig = btn.textContent;
+        btn.textContent = 'COPIED';
+        setTimeout(function(){ btn.textContent = orig; }, 1500);
+      }
+    });
+  });
 }
 
 function copySplits(id) {
@@ -1667,9 +1841,12 @@ function standardizeSplits() {
   }
 
   document.getElementById('std-seed-display').textContent = seed;
+  // Store level names in standard order for medal lookup
+  stdLevelNames = RUSH_LEVELS[stdRushKey] ? RUSH_LEVELS[stdRushKey].slice() : RUSH_LEVELS['96'].slice();
 
   if (goldOut.length) {
     trimTrailing(goldOut);
+    resetMedalViews(['std-gold-out','std-seg-out']);
     stdLastGold = goldOut.slice();
     document.getElementById('std-gold-out').value = goldOut.map(function(t){return splitsFormatTime(t,stdFmt);}).join('\n');
     document.getElementById('std-gold-wrap').style.display = 'block';
@@ -1861,6 +2038,7 @@ function spSetFormat(fmt) {
   document.getElementById('sp-fmt-mmss').classList.toggle('active', fmt==='mmss');
   if (spLastGold.length) document.getElementById('splits-gold-out').value = spLastGold.map(function(t){return splitsFormatTime(t,fmt);}).join('\n');
   if (spLastSeg.length)  document.getElementById('splits-seg-out').value  = spLastSeg.map(function(t){return splitsFormatTime(t,fmt);}).join('\n');
+  refreshMedalViews();
 }
 
 function stdSetFormat(fmt) {
@@ -1869,12 +2047,13 @@ function stdSetFormat(fmt) {
   document.getElementById('std-fmt-mmss').classList.toggle('active', fmt==='mmss');
   if (stdLastGold.length) document.getElementById('std-gold-out').value = stdLastGold.map(function(t){return splitsFormatTime(t,fmt);}).join('\n');
   if (stdLastSeg.length)  document.getElementById('std-seg-out').value  = stdLastSeg.map(function(t){return splitsFormatTime(t,fmt);}).join('\n');
+  refreshMedalViews();
 }
 
 // ════════════════════════════════════════════════════════════════════════════
 // RUN TIMER
 // ════════════════════════════════════════════════════════════════════════════
-var rtMode='seed', rtRush='96', rtFmt='plain', rtLastSegs=[];
+var rtMode='seed', rtRush='96', rtFmt='plain', rtLastSegs=[], rtMedalNames=[];
 
 var RT_ALIASES = {
   'glort':'glass port','ttt':'the third temple','ct':'the clocktower',
@@ -1886,6 +2065,128 @@ var RT_ALIASES = {
   'boof trav':'book of life traversal','sfp':'sunset flip powerbomb',
   'bm':'balloon mountain','cg':'climbing gym',
   'fish sup':'fisherman suplex','fish soup':'fisherman suplex',
+  // In-game code names
+  'tut_movement':'movement',
+  'tut_shootingrange':'pummel',
+  'slugger':'gunner',
+  'tut_frog':'cascade',
+  'tut_jump':'elevate',
+  'grid_tut_balloon':'bounce',
+  'tut_bomb2':'purify',
+  'tut_bombjump':'climb',
+  'tut_fasttrack':'fasttrack',
+  'grid_port':'glass port',
+  'grid_pagoda':'take flight',
+  'tut_rifle':'godspeed',
+  'tut_riflejock':'dasher',
+  'tut_dashenemy':'thrasher',
+  'grid_jumpdash':'outstretched',
+  'grid_smackdown':'smackdown',
+  'grid_meaty_balloons':'catwalk',
+  'grid_fast_balloon':'fastlane',
+  'grid_dragon2':'distinguish',
+  'grid_dashdance':'dancer',
+  'tut_guardian':'guardian',
+  'tut_uzi':'stomp',
+  'tut_jumper':'jumper',
+  'tut_bomb':'dash tower',
+  'grid_descend':'descent',
+  'grid_stamperout':'driller',
+  'grid_cruise':'canals',
+  'grid_sprint':'sprint',
+  'grid_mountain':'mountain',
+  'grid_superkinetic':'superkinetic',
+  'grid_arrival':'arrival',
+  'floating':'forgotten city',
+  'grid_boss_yellow':'the clocktower',
+  'grid_hophop':'fireball',
+  'grid_ringer_tutorial':'ringer',
+  'grid_ringer_exploration':'cleaner',
+  'grid_hopscotch':'warehouse',
+  'grid_boom':'boom',
+  'grid_snake_in_my_boot':'streets',
+  'grid_flock':'steps',
+  'grid_bombs_ahoy':'demolition',
+  'grid_arcs':'arcs',
+  'grid_apartment':'apartment',
+  'tut_tripwire':'hanging gardens',
+  'grid_tangled':'tangled',
+  'grid_hunt':'waterworks',
+  'grid_cannons':'killswitch',
+  'grid_falling':'falling',
+  'tut_shocker2':'shocker',
+  'tut_shocker':'bouquet',
+  'grid_prepare':'prepare',
+  'grid_tripmaze':'triptrack',
+  'grid_race':'race',
+  'tut_forcefield2':'bubble',
+  'grid_shield':'shield',
+  'sa l vage2':'overlook',
+  'grid_vertical':'pop',
+  'grid_minefield':'minefield',
+  'tut_mimic':'mimic',
+  'grid_mimicpop':'trigger',
+  'grid_swarm':'greenhouse',
+  'grid_switch':'sweep',
+  'grid_traps2':'fuse',
+  'tut_rocketjump':"heaven's edge",
+  'tut_zipline':'zipline',
+  'grid_climbang':'swing',
+  'grid_rocketuzi':'chute',
+  'grid_crashland':'crash',
+  'grid_escalate':'ascent',
+  'grid_spiderclaus':'straightaway',
+  'grid_firecracker_2':'firecracker',
+  'grid_spiderman':'streak',
+  'grid_destruction':'mirror',
+  'grid_heat':'escalation',
+  'grid_bolt':'bolt',
+  'grid_pon':'godstreak',
+  'grid_charge':'plunge',
+  'grid_mimicfinale':'mayhem',
+  'grid_barrage':'barrage',
+  'grid_1gun':'estate',
+  'grid_heck':'trapwire',
+  'grid_antfarm':'ricochet',
+  'grid_fortress':'fortress',
+  'grid_godtemple_entry':'holy ground',
+  'grid_boss_godsdeathtemple':'the third temple',
+  'grid_exterminator':'spree',
+  'grid_fever':'breakthrough',
+  'grid_skipslide':'glide',
+  'grid_closer':'closer',
+  'grid_hike':'hike',
+  'grid_skip':'switch',
+  'grid_ceiling':'access',
+  'grid_boop':'congregation',
+  'grid_triprap':'sequence',
+  'grid_ziprap':'marathon',
+  'tut_origin':'sacrifice',
+  'grid_boss_rapture':'absolution',
+  'sidequest_obstacle_pistol':'elevate traversal i',
+  'sidequest_obstacle_pistol_shoot':'elevate traversal ii',
+  'sidequest_obstacle_machinegun':'purify traversal',
+  'sidequest_obstacle_rifle_2':'godspeed traversal',
+  'sidequest_obstacle_uzi2':'stomp traversal',
+  'sidequest_obstacle_shotgun':'fireball traversal',
+  'sidequest_obstacle_rocketlauncher':'dominion traversal',
+  'sidequest_rapture_quest':'book of life traversal',
+  'sidequest_dodger':'doghouse',
+  'grid_glasspath':'choker',
+  'grid_glasspath2':'chain',
+  'grid_hellvator':'hellevator',
+  'grid_glasspath3':'razor',
+  'sidequest_all_seeing_eye':'all seeing eye',
+  'sidequest_residentsawb':'resident saw i',
+  'sidequest_residentsaw':'resident saw ii',
+  'sidequest_sunset_flip_powerbomb':'sunset flip powerbomb',
+  'grid_balloonlair':'balloon mountain',
+  'sidequest_barrel_climb':'climbing gym',
+  'sidequest_fisherman_suplex':'fisherman suplex',
+  'sidequest_stf':'stf',
+  'sidequest_arenasixnine':'arena',
+  'sidequest_attitude_adjustment':'attitude adjustment',
+  'sidequest_rocketgodz':'rocket'
 };
 
 function onRtRushChange() {
@@ -2022,6 +2323,8 @@ function rtCalculate() {
     }
   }
   rtLastSegs=times.map(function(t,i){return Math.round((i===0?t:t-times[i-1])*1000)/1000;});
+  rtMedalNames=names.slice();
+  resetMedalViews(['rt-times-out']);
   document.getElementById('rt-times-out').value=rtLastSegs.map(rtFormatTime).join('\n');
   document.getElementById('rt-levels-out').value=names.join('\n');
   document.getElementById('rt-result').style.display='block';
@@ -2032,6 +2335,7 @@ function rtSetFormat(fmt) {
   document.getElementById('rt-fmt-plain').classList.toggle('active',fmt==='plain');
   document.getElementById('rt-fmt-mmss').classList.toggle('active',fmt==='mmss');
   if(rtLastSegs.length)document.getElementById('rt-times-out').value=rtLastSegs.map(rtFormatTime).join('\n');
+  refreshMedalViews();
 }
 
 function rtCopy(id,btn){
@@ -2051,6 +2355,478 @@ function rtClearResults(){
   rtLastSegs=[];
 }
 function rtEsc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ════════════════════════════════════════════════════════════════════════════
+// COMMUNITY MEDALS
+// ════════════════════════════════════════════════════════════════════════════
+var MEDAL_DATA      = null;   // keyed by code name (uppercase), value: [emerald_ms, amethyst_ms, sapphire_ms]
+
+// Standard medals — static, baked in (bronze skipped as 900s catch-all)
+// Format: [bronze_us, silver_us, gold_us, ace_us, dev_us]
+var STANDARD_MEDAL_DATA = {
+  "TUT_MOVEMENT": [900000000, 38000000, 31000000, 24000000, 18930000],
+  "TUT_SHOOTINGRANGE": [900000000, 22500000, 17500000, 13000000, 8329000],
+  "SLUGGER": [900000000, 26000000, 19500000, 14000000, 9479000],
+  "TUT_FROG": [900000000, 28000000, 20500000, 15500000, 10210000],
+  "TUT_JUMP": [900000000, 27000000, 23000000, 21000000, 16420000],
+  "GRID_TUT_BALLOON": [900000000, 40000000, 35000000, 30000000, 19059000],
+  "TUT_BOMB2": [900000000, 21000000, 16500000, 13500000, 10449000],
+  "TUT_BOMBJUMP": [900000000, 38000000, 31000000, 27000000, 12750000],
+  "TUT_FASTTRACK": [900000000, 38000000, 33000000, 30000000, 25440000],
+  "GRID_PORT": [900000000, 64000000, 54500000, 37000000, 25319000],
+  "GRID_PAGODA": [900000000, 32500000, 28500000, 23000000, 17540000],
+  "TUT_RIFLE": [900000000, 18000000, 13000000, 11000000, 6139000],
+  "TUT_RIFLEJOCK": [900000000, 25000000, 19500000, 15000000, 10210000],
+  "TUT_DASHENEMY": [900000000, 27000000, 22000000, 18000000, 12420000],
+  "GRID_JUMPDASH": [900000000, 23000000, 16000000, 12500000, 10350000],
+  "GRID_SMACKDOWN": [900000000, 27000000, 22500000, 14000000, 10819000],
+  "GRID_MEATY_BALLOONS": [900000000, 22500000, 19500000, 16500000, 14229000],
+  "GRID_FAST_BALLOON": [900000000, 34000000, 30000000, 26000000, 22450000],
+  "GRID_DRAGON2": [900000000, 32500000, 29500000, 21500000, 15890000],
+  "GRID_DASHDANCE": [900000000, 29000000, 25000000, 22000000, 17069000],
+  "TUT_GUARDIAN": [900000000, 40000000, 35000000, 28500000, 22649000],
+  "TUT_UZI": [900000000, 32000000, 27500000, 19500000, 15340000],
+  "TUT_JUMPER": [900000000, 31000000, 27000000, 24000000, 19159000],
+  "TUT_BOMB": [900000000, 28000000, 24000000, 20500000, 14729000],
+  "GRID_DESCEND": [900000000, 23000000, 20000000, 16000000, 11399000],
+  "GRID_STAMPEROUT": [900000000, 23000000, 19500000, 16500000, 12619000],
+  "GRID_CRUISE": [900000000, 55000000, 48000000, 40000000, 30079000],
+  "GRID_SPRINT": [900000000, 33000000, 29000000, 25000000, 19639000],
+  "GRID_MOUNTAIN": [900000000, 34000000, 28000000, 25000000, 19809000],
+  "GRID_SUPERKINETIC": [900000000, 38000000, 31000000, 24000000, 20100000],
+  "GRID_ARRIVAL": [900000000, 37000000, 32500000, 26000000, 22959000],
+  "FLOATING": [900000000, 46000000, 41000000, 37500000, 33020000],
+  "GRID_BOSS_YELLOW": [900000000, 130000000, 120000000, 97000000, 53680000],
+  "GRID_HOPHOP": [900000000, 31000000, 27000000, 24000000, 19120000],
+  "GRID_RINGER_TUTORIAL": [900000000, 27000000, 23500000, 20500000, 16600000],
+  "GRID_RINGER_EXPLORATION": [900000000, 35500000, 31000000, 28000000, 14319000],
+  "GRID_HOPSCOTCH": [900000000, 27000000, 22000000, 17000000, 13989000],
+  "GRID_BOOM": [900000000, 35000000, 30000000, 24500000, 18450000],
+  "GRID_SNAKE_IN_MY_BOOT": [900000000, 24000000, 18000000, 15000000, 9609000],
+  "GRID_FLOCK": [900000000, 26000000, 22000000, 19000000, 15159000],
+  "GRID_BOMBS_AHOY": [900000000, 26000000, 23000000, 16500000, 9739000],
+  "GRID_ARCS": [900000000, 37000000, 29000000, 25500000, 18620000],
+  "GRID_APARTMENT": [900000000, 46000000, 40000000, 35000000, 23799000],
+  "TUT_TRIPWIRE": [900000000, 50000000, 45500000, 39500000, 24790000],
+  "GRID_TANGLED": [900000000, 36000000, 31500000, 21500000, 13989000],
+  "GRID_HUNT": [900000000, 33000000, 28500000, 25000000, 21979000],
+  "GRID_CANNONS": [900000000, 40000000, 36500000, 32500000, 27649000],
+  "GRID_FALLING": [900000000, 38000000, 32000000, 28000000, 22489000],
+  "TUT_SHOCKER2": [900000000, 49500000, 46000000, 37000000, 28750000],
+  "TUT_SHOCKER": [900000000, 49000000, 45500000, 33500000, 27760000],
+  "GRID_PREPARE": [900000000, 48000000, 42000000, 34500000, 30090000],
+  "GRID_TRIPMAZE": [900000000, 59000000, 53000000, 44000000, 35979000],
+  "GRID_RACE": [900000000, 34000000, 32000000, 28500000, 26139000],
+  "TUT_FORCEFIELD2": [900000000, 36000000, 32500000, 26500000, 19430000],
+  "GRID_SHIELD": [900000000, 38000000, 31000000, 26500000, 18739000],
+  "SA L VAGE2": [900000000, 29000000, 25000000, 19500000, 15449000],
+  "GRID_VERTICAL": [900000000, 48000000, 45000000, 41000000, 26030000],
+  "GRID_MINEFIELD": [900000000, 30000000, 24500000, 22000000, 17559000],
+  "TUT_MIMIC": [900000000, 25000000, 20500000, 14500000, 10700000],
+  "GRID_MIMICPOP": [900000000, 42000000, 37500000, 31500000, 24389000],
+  "GRID_SWARM": [900000000, 29500000, 25000000, 19500000, 11319000],
+  "GRID_SWITCH": [900000000, 37000000, 32500000, 26000000, 20309000],
+  "GRID_TRAPS2": [900000000, 51000000, 46500000, 43500000, 29190000],
+  "TUT_ROCKETJUMP": [900000000, 47000000, 41000000, 27500000, 18139000],
+  "TUT_ZIPLINE": [900000000, 36500000, 31500000, 22000000, 17559000],
+  "GRID_CLIMBANG": [900000000, 44000000, 37000000, 30000000, 23120000],
+  "GRID_ROCKETUZI": [900000000, 72000000, 63000000, 53000000, 46279000],
+  "GRID_CRASHLAND": [900000000, 56000000, 51000000, 41000000, 33220000],
+  "GRID_ESCALATE": [900000000, 54000000, 47500000, 43000000, 34659000],
+  "GRID_SPIDERCLAUS": [900000000, 62000000, 57000000, 48500000, 42209000],
+  "GRID_FIRECRACKER_2": [900000000, 61000000, 55000000, 48500000, 40569000],
+  "GRID_SPIDERMAN": [900000000, 60000000, 52500000, 46000000, 38450000],
+  "GRID_DESTRUCTION": [900000000, 70000000, 62000000, 57000000, 47200000],
+  "GRID_HEAT": [900000000, 61000000, 56500000, 49000000, 28940000],
+  "GRID_BOLT": [900000000, 64000000, 59500000, 48500000, 40189000],
+  "GRID_PON": [900000000, 52000000, 46500000, 41000000, 30760000],
+  "GRID_CHARGE": [900000000, 55000000, 50000000, 45500000, 35430000],
+  "GRID_MIMICFINALE": [900000000, 58000000, 52500000, 42000000, 28270000],
+  "GRID_BARRAGE": [900000000, 58000000, 52000000, 46000000, 36979000],
+  "GRID_1GUN": [900000000, 78000000, 70000000, 58000000, 44979000],
+  "GRID_HECK": [900000000, 54000000, 45000000, 37000000, 24600000],
+  "GRID_ANTFARM": [900000000, 58000000, 52000000, 43500000, 36330000],
+  "GRID_FORTRESS": [900000000, 67000000, 61500000, 49500000, 34810000],
+  "GRID_GODTEMPLE_ENTRY": [900000000, 140000000, 130000000, 120000000, 76500000],
+  "GRID_BOSS_GODSDEATHTEMPLE": [900000000, 290000000, 265000000, 237500000, 147169000],
+  "GRID_EXTERMINATOR": [900000000, 36000000, 32500000, 27000000, 20649000],
+  "GRID_FEVER": [900000000, 36000000, 27000000, 23000000, 17450000],
+  "GRID_SKIPSLIDE": [900000000, 43000000, 39000000, 31000000, 23319000],
+  "GRID_CLOSER": [900000000, 50000000, 44000000, 38000000, 34150000],
+  "GRID_HIKE": [900000000, 50000000, 45000000, 36500000, 22489000],
+  "GRID_SKIP": [900000000, 55000000, 50500000, 43000000, 32430000],
+  "GRID_CEILING": [900000000, 52000000, 47000000, 35500000, 23850000],
+  "GRID_BOOP": [900000000, 68000000, 60000000, 47500000, 33240000],
+  "GRID_TRIPRAP": [900000000, 40000000, 35500000, 25000000, 14319000],
+  "GRID_ZIPRAP": [900000000, 165000000, 140000000, 119980000, 91330000],
+  "GRID_BOSS_RAPTURE": [900000000, 216000000, 192000000, 165000000, 107629000],
+  // 8-level rush standard medals (bronze=900s, silver=5min, gold=3min)
+  "SIDEQUEST_DODGER": [900000000, 300000000, 180000000, 29000000, 24000000],
+  "GRID_GLASSPATH": [900000000, 300000000, 180000000, 28000000, 26000000],
+  "GRID_GLASSPATH2": [900000000, 300000000, 180000000, 29000000, 22000000],
+  "GRID_HELLVATOR": [900000000, 300000000, 180000000, 32000000, 24000000],
+  "GRID_GLASSPATH3": [900000000, 300000000, 180000000, 30000000, 27000000],
+  "SIDEQUEST_ALL_SEEING_EYE": [900000000, 300000000, 180000000, 40000000, 32000000],
+  "SIDEQUEST_RESIDENTSAWB": [900000000, 300000000, 180000000, 28000000, 22000000],
+  "SIDEQUEST_RESIDENTSAW": [900000000, 300000000, 180000000, 45000000, 18000000],
+  "SIDEQUEST_SUNSET_FLIP_POWERBOMB": [900000000, 300000000, 180000000, 50000000, 40000000],
+  "GRID_BALLOONLAIR": [900000000, 300000000, 180000000, 40000000, 22000000],
+  "SIDEQUEST_BARREL_CLIMB": [900000000, 300000000, 180000000, 60000000, 42000000],
+  "SIDEQUEST_FISHERMAN_SUPLEX": [900000000, 300000000, 180000000, 75000000, 47000000],
+  "SIDEQUEST_STF": [900000000, 300000000, 180000000, 35000000, 22000000],
+  "SIDEQUEST_ARENASIXNINE": [900000000, 300000000, 180000000, 60000000, 30000000],
+  "SIDEQUEST_ATTITUDE_ADJUSTMENT": [900000000, 300000000, 180000000, 48000000, 44000000],
+  "SIDEQUEST_ROCKETGODZ": [900000000, 300000000, 180000000, 80000000, 60000000],
+  "SIDEQUEST_OBSTACLE_PISTOL": [900000000, 300000000, 180000000, 25000000, 19000000],
+  "SIDEQUEST_OBSTACLE_PISTOL_SHOOT": [900000000, 300000000, 180000000, 29000000, 27000000],
+  "SIDEQUEST_OBSTACLE_MACHINEGUN": [900000000, 300000000, 180000000, 40000000, 35000000],
+  "SIDEQUEST_OBSTACLE_RIFLE_2": [900000000, 300000000, 180000000, 34000000, 16000000],
+  "SIDEQUEST_OBSTACLE_UZI2": [900000000, 300000000, 180000000, 44000000, 42000000],
+  "SIDEQUEST_OBSTACLE_SHOTGUN": [900000000, 300000000, 180000000, 44000000, 40500000],
+  "SIDEQUEST_OBSTACLE_ROCKETLAUNCHER": [900000000, 300000000, 180000000, 60000000, 45000000],
+  "SIDEQUEST_RAPTURE_QUEST": [900000000, 300000000, 180000000, 11549000, 6549000]
+};
+
+
+var MEDAL_CACHE_KEY = 'rsf_medals_data_v2';
+var MEDAL_TS_KEY    = 'rsf_medals_ts_v2';
+var MEDAL_TTL       = 86400000; // 24 hours in ms
+var MEDALS_URL      = 'https://api.github.com/repos/Faustas156/NeonLite/contents/Resources/communitymedals.json';
+var TOPAZ_URL       = 'https://api.github.com/repos/EMBOWO/NeonLite/contents/Resources/topaz%2Bbd.json';
+var TOPAZ_CACHE_KEY = 'rsf_topaz_data';
+var TOPAZ_TS_KEY    = 'rsf_topaz_ts';
+
+// Level name arrays for each output — set when splits are generated
+var spLevelNames  = [];
+var stdLevelNames = [];
+// Medal view mode per output id: 0=off, 1=community medals, 2=standard medals
+var medalViewMode = {};
+
+// Embedded fallback medal data (as of v3.7.3 — updated from NeonLite communitymedals.json)
+var MEDAL_FALLBACK = {
+  "TUT_MOVEMENT": [18199999,17899999,17699999,17599999,17549999],
+  "TUT_SHOOTINGRANGE": [7249999,6799999,6139999,5799999,5599999],
+  "SLUGGER": [7549999,6999999,6666999,6449999,6299999],
+  "TUT_FROG": [9549999,9199999,8899999,8729999,8649999],
+  "TUT_JUMP": [15399999,14849999,14349999,13799999,13799999],
+  "GRID_TUT_BALLOON": [16249999,15599999,15149999,14999999,14949999],
+  "TUT_BOMB2": [8799999,8449999,8219999,7999999,7949999],
+  "TUT_BOMBJUMP": [10999999,10649999,10459999,10349999,10299999],
+  "TUT_FASTTRACK": [21999999,20999999,19499999,18999999,18699999],
+  "GRID_PORT": [22199999,19459999,18499999,17199999,16599999],
+  "GRID_PAGODA": [15799999,15249999,14599999,14149999,13849999],
+  "TUT_RIFLE": [5969999,5950999,5899999,5749999,5699999],
+  "TUT_RIFLEJOCK": [9599999,9199999,8779999,8579999,8499999],
+  "TUT_DASHENEMY": [11849999,11499999,11339999,11219999,11199999],
+  "GRID_JUMPDASH": [9999999,9499999,9149999,8949999,8899999],
+  "GRID_SMACKDOWN": [9999999,9799999,9299999,8929999,8799999],
+  "GRID_MEATY_BALLOONS": [13849999,13549999,13349999,13099999,12999999],
+  "GRID_FAST_BALLOON": [21999999,21649999,21399999,21239999,21149999],
+  "GRID_DRAGON2": [15349999,14999999,14699999,14549999,14499999],
+  "GRID_DASHDANCE": [16199999,15749999,15399999,15199999,15099999],
+  "TUT_GUARDIAN": [20549999,19679999,18249999,17399999,16999999],
+  "TUT_UZI": [14699999,13899999,13499999,12599999,12299999],
+  "TUT_JUMPER": [13599999,12599999,11449999,11099999,10899999],
+  "TUT_BOMB": [12999999,12199999,10999999,10449999,10299999],
+  "GRID_DESCEND": [9999999,9499999,9229999,8999999,8899999],
+  "GRID_STAMPEROUT": [11199999,10879999,10549999,10299999,9799999],
+  "GRID_CRUISE": [16999999,14649999,13649999,13199999,12899999],
+  "GRID_SPRINT": [16649999,15999999,15299999,14699999,14649999],
+  "GRID_MOUNTAIN": [17299999,15999999,15499999,14299999,13999999],
+  "GRID_SUPERKINETIC": [16299999,14299999,13499999,12899999,12699999],
+  "GRID_ARRIVAL": [21579999,20849999,20499999,20249999,20149999],
+  "FLOATING": [27999999,24299999,23199999,22699999,22449999],
+  "GRID_BOSS_YELLOW": [36599999,33899999,30999999,29999999,29399999],
+  "GRID_HOPHOP": [17299999,16499999,15749999,15449999,15299999],
+  "GRID_RINGER_TUTORIAL": [13999999,12879999,11499999,10699999,10399999],
+  "GRID_RINGER_EXPLORATION": [12999999,11449999,10299999,9849999,9449999],
+  "GRID_HOPSCOTCH": [11799999,11179999,10649999,10349999,10149999],
+  "GRID_BOOM": [16349999,15499999,14799999,14349999,13999999],
+  "GRID_SNAKE_IN_MY_BOOT": [7399999,6899999,6249999,5979999,5699999],
+  "GRID_FLOCK": [12499999,12099999,11699999,11449999,11199999],
+  "GRID_BOMBS_AHOY": [7099999,6549999,5899999,5649999,5549999],
+  "GRID_ARCS": [17299999,16399999,15849999,15549999,15099999],
+  "GRID_APARTMENT": [15399999,12879999,11249999,10649999,10299999],
+  "TUT_TRIPWIRE": [22999999,21999999,21499999,21199999,20999999],
+  "GRID_TANGLED": [13499999,12349999,11879999,11649999,11499999],
+  "GRID_HUNT": [20299999,19499999,19199999,18999999,18899999],
+  "GRID_CANNONS": [25299999,23999999,22999999,22449999,21999999],
+  "GRID_FALLING": [20499999,19149999,18599999,18349999,18199999],
+  "TUT_SHOCKER2": [28299999,27299999,23399999,21799999,21299999],
+  "TUT_SHOCKER": [22499999,20999999,19699999,18499999,17299999],
+  "GRID_PREPARE": [27599999,25249999,24099999,23199999,21699999],
+  "GRID_TRIPMAZE": [32899999,27899999,26099999,24999999,23999999],
+  "GRID_RACE": [23099999,22249999,21599999,20899999,20499999],
+  "TUT_FORCEFIELD2": [16199999,14499999,13999999,13549999,13349999],
+  "GRID_SHIELD": [16799999,15399999,14299999,13649999,13349999],
+  "SA L VAGE2": [13349999,12299999,11799999,11549999,11299999],
+  "GRID_VERTICAL": [24699999,23879999,23349999,22799999,22649999],
+  "GRID_MINEFIELD": [12999999,11599999,10549999,9999999,9799999],
+  "TUT_MIMIC": [9799999,9349999,9099999,8699999,8549999],
+  "GRID_MIMICPOP": [20099999,18999999,17499999,16699999,16349999],
+  "GRID_SWARM": [7699999,7499999,7179999,7069999,6899999],
+  "GRID_SWITCH": [17999999,16749999,16199999,15699999,14499999],
+  "GRID_TRAPS2": [24999999,22999999,20499999,19499999,18999999],
+  "TUT_ROCKETJUMP": [12299999,11649999,10999999,10599999,10499999],
+  "TUT_ZIPLINE": [11899999,11579999,11199999,10899999,10799999],
+  "GRID_CLIMBANG": [16699999,15349999,13999999,12999999,12599999],
+  "GRID_ROCKETUZI": [39899999,36499999,34499999,33299999,32649999],
+  "GRID_CRASHLAND": [28499999,26379999,24499999,23549999,22999999],
+  "GRID_ESCALATE": [25599999,22499999,20849999,20299999,19999999],
+  "GRID_SPIDERCLAUS": [39599999,37999999,36299999,34599999,33649999],
+  "GRID_FIRECRACKER_2": [33999999,30579999,26999999,25799999,24599999],
+  "GRID_SPIDERMAN": [25099999,21499999,19749999,18399999,17699999],
+  "GRID_DESTRUCTION": [27999999,24999999,23449999,22799999,22299999],
+  "GRID_HEAT": [25899999,23999999,22666999,21799999,20999999],
+  "GRID_BOLT": [29299999,25599999,23899999,21999999,20499999],
+  "GRID_PON": [26999999,25799999,24399999,21999999,20699999],
+  "GRID_CHARGE": [31199999,29799999,28899999,28499999,27999999],
+  "GRID_MIMICFINALE": [18199999,16749999,15499999,14199999,13699999],
+  "GRID_BARRAGE": [31899999,28299999,25799999,24099999,21999999],
+  "GRID_1GUN": [36727999,31999999,28699999,26999999,25999999],
+  "GRID_HECK": [22099999,20399999,19899999,19499999,19299999],
+  "GRID_ANTFARM": [33799999,31179999,28999999,27199999,22999999],
+  "GRID_FORTRESS": [29099999,24199999,22666999,21199999,19349999],
+  "GRID_GODTEMPLE_ENTRY": [52799999,51499999,50549999,49749999,49499999],
+  "GRID_BOSS_GODSDEATHTEMPLE": [69799999,59999999,53499999,48999999,46999999],
+  "GRID_EXTERMINATOR": [8399999,7499999,6666999,6249999,5999999],
+  "GRID_FEVER": [7899999,5299999,4599999,4299999,3999999],
+  "GRID_SKIPSLIDE": [9899999,8699999,7777999,7299999,6899999],
+  "GRID_CLOSER": [12399999,10899999,10099999,9799999,9599999],
+  "GRID_HIKE": [8099999,7099999,6249999,5749999,5499999],
+  "GRID_SKIP": [12899999,11889999,10499999,9899999,9549999],
+  "GRID_CEILING": [16499999,14799999,13199999,12099999,11699999],
+  "GRID_BOOP": [24899999,22899999,20899999,20299999,19899999],
+  "GRID_TRIPRAP": [10999999,9849999,9099999,8499999,7999999],
+  "GRID_ZIPRAP": [15299999,12999999,11799999,10799999,9999999],
+  "TUT_ORIGIN": [19599999,18999999,16859999,16349999,15999999],
+  "GRID_BOSS_RAPTURE": [85999999,78999999,73999999,69999999,66499999],
+  "SIDEQUEST_OBSTACLE_PISTOL": [14899999,14449999,13999999,13799999,13699999],
+  "SIDEQUEST_OBSTACLE_PISTOL_SHOOT": [25699999,24599999,24199999,23899999,23799999],
+  "SIDEQUEST_OBSTACLE_MACHINEGUN": [31999999,27499999,25799999,25299999,24599999],
+  "SIDEQUEST_OBSTACLE_RIFLE_2": [13099999,12599999,11999999,11399999,11249999],
+  "SIDEQUEST_OBSTACLE_UZI2": [39249999,38299999,36199999,35399999,34999999],
+  "SIDEQUEST_OBSTACLE_SHOTGUN": [35499999,34559999,32999999,32499999,32099999],
+  "SIDEQUEST_OBSTACLE_ROCKETLAUNCHER": [40499999,35199999,32799999,31599999,30899999],
+  "SIDEQUEST_RAPTURE_QUEST": [1899999,1469999,1399999,1283999,1249999],
+  "SIDEQUEST_DODGER": [19899999,18799999,18339999,17999999,17799999],
+  "GRID_GLASSPATH": [24699999,24399999,24255999,23999999,23899999],
+  "GRID_GLASSPATH2": [19199999,18699999,18449999,18099999,17999999],
+  "GRID_HELLVATOR": [21849999,21399999,21099999,20899999,20799999],
+  "GRID_GLASSPATH3": [24599999,23949999,23599999,23429999,23299999],
+  "SIDEQUEST_ALL_SEEING_EYE": [27899999,27399999,26699999,24999999,23999999],
+  "SIDEQUEST_RESIDENTSAWB": [17299999,16699999,16279999,15849999,15749999],
+  "SIDEQUEST_RESIDENTSAW": [16449999,16359999,16319999,16079999,15999999],
+  "SIDEQUEST_SUNSET_FLIP_POWERBOMB": [36999999,36479999,35799999,35379999,34999999],
+  "GRID_BALLOONLAIR": [19799999,19579999,19459999,19379999,19349999],
+  "SIDEQUEST_BARREL_CLIMB": [36899999,35999999,35279999,14999999,13999999],
+  "SIDEQUEST_FISHERMAN_SUPLEX": [41599999,37999999,37099999,35599999,34999999],
+  "SIDEQUEST_STF": [17899999,16849999,16299999,15099999,14799999],
+  "SIDEQUEST_ARENASIXNINE": [22899999,19399999,17899999,16999999,16399999],
+  "SIDEQUEST_ATTITUDE_ADJUSTMENT": [41549999,40179999,38399999,37499999,36799999],
+  "SIDEQUEST_ROCKETGODZ": [47999999,44299999,40399999,38299999,37399999]
+};
+
+function loadMedalData() {
+  var now = Date.now();
+  // Always start with embedded fallback so medals work immediately
+  MEDAL_DATA = MEDAL_FALLBACK;
+
+  // Try localStorage cache first — discard if stale or pre-v3.7 (< 5 values)
+  try {
+    var ts   = parseInt(localStorage.getItem(MEDAL_TS_KEY) || '0');
+    var data = localStorage.getItem(MEDAL_CACHE_KEY);
+    if (data && (now - ts) < MEDAL_TTL) {
+      var parsed = JSON.parse(data);
+      var sampleKey = Object.keys(parsed)[0];
+      if (sampleKey && parsed[sampleKey].length >= 5) {
+        MEDAL_DATA = parsed;
+        console.log('[medals] loaded from localStorage cache (' + Object.keys(MEDAL_DATA).length + ' entries)');
+        return;
+      }
+      console.log('[medals] cache discarded — pre-v3.7 format, re-fetching');
+    }
+  } catch(e) {}
+
+  // Only attempt live fetch over HTTPS (file:// and HTTP will use embedded fallback)
+  if (location.protocol !== 'https:') {
+    console.log('[medals] using embedded fallback (not served over HTTPS)');
+    return;
+  }
+
+  // Fetch both JSONs and merge: communitymedals (3-value) + topaz+bd (5-value)
+  function fetchBase64Json(url) {
+    return fetch(url)
+      .then(function(r) { return r.json(); })
+      .then(function(w) {
+        if (w.content && w.encoding === 'base64') return JSON.parse(atob(w.content.replace(/\n/g,'')));
+        throw new Error('unexpected format');
+      });
+  }
+
+  Promise.all([fetchBase64Json(MEDALS_URL), fetchBase64Json(TOPAZ_URL)])
+    .then(function(results) {
+      var community = results[0]; // [emerald, amethyst, sapphire]
+      var topazBd   = results[1]; // [emerald, amethyst, sapphire, topaz, blooddiamond]
+      // Merge: prefer 5-value topaz+bd where available, fall back to 3-value community
+      var merged = {};
+      var allKeys = new Set(Object.keys(community).concat(Object.keys(topazBd)));
+      allKeys.forEach(function(k) {
+        if (topazBd[k] && topazBd[k].length >= 5) merged[k] = topazBd[k];
+        else if (community[k]) merged[k] = community[k];
+      });
+      MEDAL_DATA = merged;
+      try {
+        localStorage.setItem(MEDAL_CACHE_KEY, JSON.stringify(merged));
+        localStorage.setItem(MEDAL_TS_KEY, Date.now().toString());
+      } catch(e) {}
+      console.log('[medals] updated from GitHub — merged ' + Object.keys(merged).length + ' entries');
+    })
+    .catch(function(e) {
+      console.log('[medals] live fetch failed, using embedded fallback:', e.message);
+    });
+}
+loadMedalData();
+
+// Given a display level name and a time string, return medal class or ''
+function resolveLevelCodeName(levelName) {
+  var q = levelName.toLowerCase().trim();
+  var aliasKeys = Object.keys(LEVEL_ALIASES);
+  var shorthand = null;
+  for (var i = 0; i < aliasKeys.length; i++) {
+    if (LEVEL_ALIASES[aliasKeys[i]] === q) {
+      // Prefer code-name style keys (contain underscore) over shorthand aliases
+      if (aliasKeys[i].indexOf('_') !== -1) return aliasKeys[i].toUpperCase();
+      if (!shorthand) shorthand = aliasKeys[i];
+    }
+  }
+  return shorthand ? shorthand.toUpperCase() : null;
+}
+
+function getMedalClass(levelName, timeStr) {
+  // Unified hierarchy lowest→highest: bronze > silver > gold > ace > dev > emerald > amethyst > sapphire
+  if (!levelName || !timeStr) return '';
+  var codeName = resolveLevelCodeName(levelName);
+  if (!codeName) return '';
+  var secs = parseSplitTimeToSecs(timeStr);
+  if (secs === null) return '';
+
+  // Check community medals first (highest tier — sapphire hardest)
+  if (MEDAL_DATA) {
+    var comm = MEDAL_DATA[codeName];
+    if (comm && comm.length >= 3) {
+      if (comm.length >= 5 && secs <= comm[4] / 1000000) return 'medal-blooddiamond';
+      if (comm.length >= 5 && secs <= comm[3] / 1000000) return 'medal-topaz';
+      if (secs <= comm[2] / 1000000) return 'medal-sapphire';
+      if (secs <= comm[1] / 1000000) return 'medal-amethyst';
+      if (secs <= comm[0] / 1000000) return 'medal-emerald';
+    }
+  }
+  // Check standard medals (dev hardest among these)
+  var std = STANDARD_MEDAL_DATA[codeName];
+  if (std && std.length >= 5) {
+    if (secs <= std[4] / 1000000) return 'medal-dev';
+    if (secs <= std[3] / 1000000) return 'medal-ace';
+    if (secs <= std[2] / 1000000) return 'medal-gold';
+    if (secs <= std[1] / 1000000) return 'medal-silver';
+    if (secs <= std[0] / 1000000) return 'medal-bronze';
+  }
+  return '';
+}
+
+// Render a medal view for a given output
+// times: array of formatted time strings
+// levelNames: array of level name strings (parallel to times)
+// divId: id of the .medal-view div
+function renderMedalView(divId, times, levelNames) {
+  var div = document.getElementById(divId);
+  if (!div) return;
+  var html = '';
+  for (var i = 0; i < times.length; i++) {
+    var t    = times[i] || '';
+    var name = levelNames[i] || '';
+    var cls  = getMedalClass(name, t);
+    // Gradient medals need special treatment — apply class to span, use transparent fill
+    var isGradient = (cls === 'medal-topaz' || cls === 'medal-blooddiamond');
+    var color = isGradient ? 'inherit'
+              : cls === 'medal-sapphire' ? '#363de2'
+              : cls === 'medal-amethyst' ? '#c971ff'
+              : cls === 'medal-emerald'  ? '#81c784'
+              : cls === 'medal-dev'      ? '#ff4444'
+              : cls === 'medal-ace'      ? '#8de4e0'
+              : cls === 'medal-gold'     ? '#ffd700'
+              : cls === 'medal-silver'   ? '#c0c0c0'
+              : cls === 'medal-bronze'   ? '#cd7f32'
+              : '#ffe066';
+    html += isGradient
+      ? '<span class="' + cls + '">' + escHtmlMedal(t) + '</span>'
+      : '<span style="color:' + color + ';">' + escHtmlMedal(t) + '</span>';
+  }
+  div.innerHTML = html;
+}
+
+function escHtmlMedal(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function toggleMedalView(taId, btnId) {
+  var ta   = document.getElementById(taId);
+  var div  = document.getElementById(taId + '-medal');
+  var btn  = document.getElementById(btnId);
+  if (!ta || !div) return;
+  var on = !medalViewMode[taId];
+  medalViewMode[taId] = on;
+  if (!on) {
+    ta.style.display  = '';
+    div.style.display = 'none';
+    if (btn) { btn.classList.remove('active','medal-on'); btn.classList.add('medal-off'); btn.textContent = 'MEDALS OFF'; }
+  } else {
+    var times = ta.value.split('\n');
+    var names = getMedalNamesForOutput(taId);
+    renderMedalView(taId + '-medal', times, names);
+    div.style.height = ta.offsetHeight ? ta.offsetHeight + 'px' : '';
+    ta.style.display  = 'none';
+    div.style.display = 'block';
+    if (btn) { btn.classList.remove('active','medal-off'); btn.classList.add('medal-on'); btn.textContent = 'MEDALS ON'; }
+  }
+}
+
+// Return the parallel level names array for a given output textarea id
+function getMedalNamesForOutput(taId) {
+  if (taId === 'splits-gold-out' || taId === 'splits-seg-out') return spLevelNames;
+  if (taId === 'std-gold-out'    || taId === 'std-seg-out')    return stdLevelNames;
+  if (taId === 'rt-times-out')   return rtMedalNames;
+  return [];
+}
+
+// Re-render active medal views after format change or recalculation
+function refreshMedalViews() {
+  var ids = ['splits-gold-out','splits-seg-out','std-gold-out','std-seg-out','rt-times-out'];
+  ids.forEach(function(taId) {
+    if (medalViewMode[taId]) {
+      var ta = document.getElementById(taId);
+      if (ta) {
+        var times = ta.value.split('\n');
+        var names = getMedalNamesForOutput(taId);
+        renderMedalView(taId + '-medal', times, names);
+      }
+    }
+  });
+}
+
+// Reset medal views when new splits are generated
+function resetMedalViews(ids) {
+  ids.forEach(function(taId) {
+    medalViewMode[taId] = false;
+    var ta  = document.getElementById(taId);
+    var div = document.getElementById(taId + '-medal');
+    var btn = document.getElementById(taId.replace('-out','') + '-medal-btn') ||
+              document.getElementById('rt-times-medal-btn');
+    if (ta)  ta.style.display  = '';
+    if (div) { div.style.display='none'; div.innerHTML=''; }
+    if (btn) { btn.classList.remove('active','medal-on'); btn.classList.add('medal-off'); btn.textContent='MEDALS OFF'; }
+  });
+}
 </script>
 </body>
 </html>
