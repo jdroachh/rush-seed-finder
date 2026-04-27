@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Neon White Rush Toolbox v3.7.3</title>
+<title>Neon White Rush Toolbox v3.8.8</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -56,6 +56,14 @@
   .seq-item.highlighted{border-color:var(--accent);color:var(--accent);background:rgba(0,255,159,0.08);}
   .seq-item.excluded{border-color:#ffaa00;color:#ffaa00;background:rgba(255,170,0,0.07);}
   .seq-item .num{color:var(--text-dim);margin-right:4px;font-size:12px;}
+  .seq-item .hp-heart{color:#ff6b9d;font-size:11px;margin-left:5px;vertical-align:middle;}
+  .seq-item.hp-row{border-color:#ff6b9d33;}
+  .hell-mode-panel{margin-top:16px;padding:14px 16px;border:1px solid #ff6b9d44;background:rgba(255,107,157,0.04);border-radius:4px;}
+  .hell-mode-panel .section-label{color:#ff6b9d;}
+  .hp-score{font-size:11px;letter-spacing:1px;padding:2px 8px;border:1px solid #ff6b9d66;color:#ff6b9d;font-family:var(--mono);margin-left:8px;border-radius:2px;position:relative;cursor:default;}
+  .hp-score .hp-tooltip{display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid #ff6b9d66;color:var(--text);font-size:11px;letter-spacing:1px;padding:4px 8px;white-space:nowrap;border-radius:2px;z-index:10;pointer-events:none;}
+  .hp-score:hover .hp-tooltip{display:block;}
+  .hell-mode-warning{font-size:13px;color:#ffaa00;line-height:1.6;padding:10px 14px;border:1px solid #ffaa0066;margin-bottom:12px;}
   .sequence-list::-webkit-scrollbar{width:4px;}
   .sequence-list::-webkit-scrollbar-track{background:var(--border);}
   .sequence-list::-webkit-scrollbar-thumb{background:var(--accent);}
@@ -75,6 +83,7 @@
   /* Result mode toggle */
   input[name="order"] { display: none; }
   input[name="order"]:checked + label { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: bold; }
+  input[name="hellmode"]:checked + label { background: #ff6b9d; color: var(--bg); border-color: #ff6b9d; font-weight: bold; }
   input[name="resultmode"] { display: none; }
   input[name="resultmode"] + label {
     flex: 1; text-align: center; padding: 10px 16px;
@@ -254,7 +263,7 @@
     </div>
     <div class="field">
       <label class="section-label">Desired Starting Levels</label>
-      <input type="text" id="s-levels" placeholder="e.g. The Third Temple, Absolution, The Clocktower" oninput="syncDepthToLevels()">
+      <input type="text" id="s-levels" placeholder="e.g. The Third Temple, Absolution, The Clocktower" oninput="syncDepthToLevels();updateHellHpWarning();">
       <div class="hint">Comma-separated level names or numbers (1-indexed). Case insensitive.</div>
     </div>
     <hr class="section-divider">
@@ -286,6 +295,46 @@
             <label>Excluded Levels</label>
             <input type="text" id="avoid-levels" placeholder="e.g. Godspeed, Breakthrough, Greenhouse">
             <div class="hint">Comma-separated. These levels must not appear in the first N positions.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <hr class="section-divider">
+    <div class="field">
+      <label class="section-label">Hell Rush Mode</label>
+      <label class="checkbox-row" for="hell-checkbox">
+        <input type="checkbox" id="hell-checkbox" onchange="toggleHellMode()">
+        <span>Optimise for health pack spacing</span>
+      </label>
+      <div class="hell-mode-panel" id="hell-panel" style="display:none;">
+        <div id="hell-warning" class="hell-mode-warning" style="display:none;">
+          &#9888; Hell Rush mode evaluates health pack spacing for every seed tested. This may significantly increase search time, especially over large ranges or with GPU. For best results, use Find Multiple mode with a small count first.
+          <div style="margin-top:8px;"><button class="btn-small" onclick="dismissHellWarning()">GOT IT</button></div>
+        </div>
+        <label class="section-label" style="font-size:11px;margin-bottom:8px;">Spacing Mode</label>
+        <div class="toggle-group" style="display:flex;">
+          <input type="radio" name="hellmode" id="hell-secondary" value="secondary" checked onchange="onHellModeChange()">
+          <label for="hell-secondary" style="flex:1;text-align:center;padding:8px;border:1px solid var(--border);cursor:pointer;font-size:13px;letter-spacing:1px;transition:all 0.2s;margin:0;border-right:none;">Secondary Filter</label>
+          <input type="radio" name="hellmode" id="hell-standalone" value="standalone" onchange="onHellModeChange()">
+          <label for="hell-standalone" style="flex:1;text-align:center;padding:8px;border:1px solid var(--border);cursor:pointer;font-size:13px;letter-spacing:1px;transition:all 0.2s;margin:0;">Best Spacing Only</label>
+        </div>
+        <div class="hint" style="margin-top:8px;">Secondary filter ranks results by health pack spacing. Best Spacing Only finds seeds matching your level preferences that also meet the spacing score threshold, stopping once enough are found.</div>
+        <div id="hell-pool-wrap" style="display:none;margin-top:12px;">
+          <label class="section-label" style="font-size:11px;margin-bottom:6px;">Search Pool Size</label>
+          <input type="number" id="hell-pool-size" value="50" min="5" max="500" style="width:80px;">
+          <div class="hint" style="margin-top:4px;">Collect this many level-matching seeds first, then return the top N by spacing score. Higher = better ranking but slower search.</div>
+        </div>
+        <div id="hell-hp-warning" style="display:none;margin-top:10px;font-size:12px;color:#ffaa00;line-height:1.6;padding:8px 12px;border:1px solid #ffaa0044;">
+          &#9888; One or more of your desired starting levels are health pack stages. Seeds where these appear early will score lower due to early-clustering penalties. Consider using Best Spacing Only mode or a deeper search depth for better results.
+        </div>
+        <div id="hell-minscore-wrap" style="display:none;margin-top:12px;">
+          <label class="checkbox-row" for="hell-minscore-checkbox" style="margin-bottom:6px;">
+            <input type="checkbox" id="hell-minscore-checkbox" onchange="onMinScoreToggle()" checked>
+            <span style="font-size:12px;letter-spacing:2px;text-transform:uppercase;">Minimum Score Threshold</span>
+          </label>
+          <div id="hell-minscore-inner" style="display:block;margin-top:8px;">
+            <input type="number" id="hell-minscore" value="60" min="0" max="100" style="width:80px;">
+            <div class="hint" style="margin-top:4px;">Only return seeds scoring at or above this threshold. Default: 60.</div>
           </div>
         </div>
       </div>
@@ -494,7 +543,8 @@
       <label class="section-label">Input Mode</label>
       <div style="display:flex;gap:0;">
         <button class="btn-small active" id="rt-mode-seed-btn" onclick="rtSetMode('seed')" style="flex:1;padding:10px;font-size:13px;">Load by Seed</button>
-        <button class="btn-small" id="rt-mode-manual-btn" onclick="rtSetMode('manual')" style="flex:1;padding:10px;font-size:13px;border-left:none;">Enter Manually</button>
+        <button class="btn-small" id="rt-mode-manual-btn" onclick="rtSetMode('manual')" style="flex:1;padding:10px;font-size:13px;">Enter Manually</button>
+        <button class="btn-small" id="rt-mode-standard-btn" onclick="rtSetMode('standard')" style="flex:1;padding:10px;font-size:13px;">Standard Order</button>
       </div>
     </div>
 
@@ -559,7 +609,7 @@
   </div>
 
 </div>
-<div class="corner-deco">RUSH TOOLBOX // v3.7.3</div>
+<div class="corner-deco">RUSH TOOLBOX // v3.8.8</div>
 <script>
 // ── C# System.Random port ──────────────────────────────────────────────────
 var MBIG = 2147483647;
@@ -1288,7 +1338,16 @@ function startSearch() {
   var stopAt = orderMatters ? tLen : searchDepth;
 
   var multiMode = document.querySelector('input[name="resultmode"]:checked').value === 'multi';
-  var maxSeeds = multiMode ? Math.max(2, parseInt(document.getElementById('s-maxseeds').value) || 5) : 1;
+  var isStandaloneHell  = hellModeEnabled && getHellSpacingMode() === 'standalone';
+  var isSecondaryHell   = hellModeEnabled && getHellSpacingMode() === 'secondary';
+  var returnCount = (isStandaloneHell || multiMode)
+    ? Math.max(2, parseInt(document.getElementById('s-maxseeds').value) || 5)
+    : 1;
+  // Secondary filter: collect a larger pool, then return top returnCount by score
+  var poolSize = isSecondaryHell
+    ? Math.max(returnCount, parseInt(document.getElementById('hell-pool-size').value) || 50)
+    : returnCount;
+  var maxSeeds = isSecondaryHell ? poolSize : returnCount;
   var MAX_SEED = 2147483647;
   var CHUNK         = 50000;   // initial conservative value — auto-calibrates after first tick
   var CPU_TARGET_MS = 16;      // target ms per tick for ~60fps UI responsiveness
@@ -1298,6 +1357,9 @@ function startSearch() {
   var startTime = Date.now();
 
   searching = true;
+  hellTopN = []; hellLastRender = 0;
+  hellTargetSet = targetSet; hellForceIdx = forceFirstEnabled ? forceFirstIdx : -1;
+  hellAvoidSet = avoidEnabled ? avoidSet : {}; hellAvoidDepth = avoidEnabled ? avoidDepthVal : 0;
   document.getElementById('search-btn').style.display = 'none';
   document.getElementById('stop-btn').style.display   = 'block';
   document.getElementById('search-result').classList.remove('visible');
@@ -1334,11 +1396,21 @@ function startSearch() {
     },
     onDone: function(seeds) {
       searchDone();
-      setStatus(seeds.length > 0
-        ? 'Found ' + seeds.length + ' seed' + (seeds.length > 1 ? 's' : '') + '.'
-        : 'No matching seed found in full range.');
+      if (hellModeEnabled && getHellSpacingMode() === 'standalone') {
+        // searchDone handles hellTopN result display
+      } else {
+        setStatus(seeds.length > 0
+          ? 'Found ' + seeds.length + ' seed' + (seeds.length > 1 ? 's' : '') + '.'
+          : 'No matching seed found in full range.');
+      }
     }
   };
+
+  // Standalone hell mode must use CPU — GPU shader can't evaluate spacing scores
+  if (isStandaloneHell) {
+    cpuTick();
+    return;
+  }
 
   if (engineMode === 'gpu' && gpuReady) {
     gpuSearch(gpuParams).then(function(didGpu) {
@@ -1411,7 +1483,29 @@ function startSearch() {
         }
       }
 
-      if (match) {
+      // Hell Rush standalone: level match + spacing score, stop once quota filled
+      if (hellModeEnabled && getHellSpacingMode() === 'standalone') {
+        var minScoreEnabled = document.getElementById('hell-minscore-checkbox').checked;
+        var minScore = minScoreEnabled ? (parseInt(document.getElementById('hell-minscore').value) || 70) : 0;
+        // Apply level match check if the user specified desired levels
+        var levelMatch = (tLen === 0) ? true : match;
+        if (levelMatch) {
+          var order = fullShuffle(numLevels, seed);
+          var score = scoreHpSpacing(order);
+          if (score >= minScore) {
+            hellTopN.push({ seed: seed, order: order, score: score });
+            hellTopN.sort(function(a, b) { return b.score - a.score; });
+            if (hellTopN.length > maxSeeds) hellTopN.pop();
+            hellRenderTopN(); // throttled re-render
+            // Stop once we have enough seeds meeting both criteria
+            if (hellTopN.length >= maxSeeds) {
+              searchDone();
+              setStatus('Found ' + hellTopN.length + ' seed' + (hellTopN.length > 1 ? 's' : '') + ' with spacing score \u2265 ' + minScore + '.');
+              return;
+            }
+          }
+        }
+      } else if (match) {
         var order = fullShuffle(numLevels, seed);
         foundSeeds.push({ seed: seed, order: order });
         addSeedResult(seed, order, targetSet, foundSeeds.length, forceFirstEnabled ? forceFirstIdx : -1, avoidEnabled ? avoidSet : {}, avoidEnabled ? avoidDepthVal : 0);
@@ -1449,7 +1543,9 @@ function startSearch() {
 
     if (seed > MAX_SEED) {
       searchDone();
-      if (foundSeeds.length === 0) {
+      if (hellModeEnabled && getHellSpacingMode() === 'standalone') {
+        // searchDone handles hellTopN result display
+      } else if (foundSeeds.length === 0) {
         showSearchError('No seeds found for these parameters.');
       } else {
         setStatus('Search complete. Found ' + foundSeeds.length + ' seed' + (foundSeeds.length > 1 ? 's' : '') + '.');
@@ -1470,6 +1566,22 @@ function stopSearch() {
 }
 
 function searchDone() {
+  if (hellModeEnabled && getHellSpacingMode() === 'standalone' && hellTopN.length > 0) {
+    // Final authoritative render of top-N
+    hellLastRender = 0;
+    hellRenderTopN();
+    var minScoreEnabled2 = document.getElementById('hell-minscore-checkbox') && document.getElementById('hell-minscore-checkbox').checked;
+    var minScore2 = minScoreEnabled2 ? (parseInt(document.getElementById('hell-minscore').value) || 70) : 0;
+    var scoreLabel = minScoreEnabled2 ? ' scoring \u2265 ' + minScore2 : '';
+    document.getElementById('search-result-label').textContent =
+      'Best ' + hellTopN.length + ' seed' + (hellTopN.length > 1 ? 's' : '') + scoreLabel + ' found';
+  } else if (hellModeEnabled && getHellSpacingMode() === 'standalone' && hellTopN.length === 0) {
+    var minScoreEnabled2 = document.getElementById('hell-minscore-checkbox') && document.getElementById('hell-minscore-checkbox').checked;
+    var minScore2 = minScoreEnabled2 ? (parseInt(document.getElementById('hell-minscore').value) || 70) : 0;
+    showSearchError('No seeds found matching your level preferences with a spacing score \u2265 ' + minScore2 + '. Try lowering the minimum score or widening level requirements.');
+  } else if (hellModeEnabled && getHellSpacingMode() === 'secondary') {
+    sortAndTrimSecondaryResults();
+  }
   searching = false;
   if (searchTimer) { clearTimeout(searchTimer); searchTimer = null; }
   document.getElementById('search-btn').style.display = 'block';
@@ -1482,12 +1594,14 @@ function addSeedResult(seed, order, targetSet, index, forceIdx, avoidSet, avoidD
 
   var entry = document.createElement('div');
   entry.className = 'seed-entry';
+  if (hellModeEnabled) entry.setAttribute('data-hp-score', scoreHpSpacing(order));
 
   // Header (always visible, click to expand)
   var header = document.createElement('div');
   header.className = 'seed-entry-header';
   header.innerHTML =
-    '<div><span class="seed-num-label">Seed</span><span class="seed-num">' + seed + '</span></div>' +
+    '<div><span class="seed-num-label">Seed</span><span class="seed-num">' + seed + '</span>' +
+      (hellModeEnabled ? hpScoreLabel(scoreHpSpacing(order)) : '') + '</div>' +
     '<div class="seed-meta-wrap"><span class="seed-match-label">Match</span><span class="seed-match-num">#' + index + '</span></div>' +
     '<button class="seed-copy-btn" data-seed="' + seed + '">COPY</button>' +
     '<span class="seed-chevron">&#9660;</span>';
@@ -1528,8 +1642,9 @@ function addSeedResult(seed, order, targetSet, index, forceIdx, avoidSet, avoidD
     var div = document.createElement('div');
     var isHighlighted = targetSet[idx] || idx === forceIdx;
     var isExcluded = !isHighlighted && avoidSet && avoidSet[idx];
-    div.className = 'seq-item' + (isHighlighted ? ' highlighted' : isExcluded ? ' excluded' : '');
-    div.innerHTML = '<span class="num">'+(pos+1)+'.</span> '+levelLabel(idx);
+    var isHp = hellModeEnabled && HP_INDEX_SET[idx];
+    div.className = 'seq-item' + (isHighlighted ? ' highlighted' : isExcluded ? ' excluded' : '') + (isHp ? ' hp-row' : '');
+    div.innerHTML = '<span class="num">'+(pos+1)+'.</span> ' + (hellModeEnabled ? labelWithHeart(levelLabel(idx)) : levelLabel(idx));
     seqList.appendChild(div);
   }
   body.appendChild(seqList);
@@ -1546,6 +1661,32 @@ function addSeedResult(seed, order, targetSet, index, forceIdx, avoidSet, avoidD
   document.getElementById('search-result-label').textContent =
     'Found ' + index + ' seed' + (index > 1 ? 's' : '');
   document.getElementById('search-result').classList.add('visible');
+
+  // (Hell Rush secondary filter: sorted once at searchDone, not per-result)
+}
+
+function sortSeedResultsBySpacing() {
+  var list = document.getElementById('multi-result-list');
+  var entries = Array.prototype.slice.call(list.children);
+  entries.sort(function(a, b) {
+    var sa = parseInt(a.getAttribute('data-hp-score') || '0');
+    var sb = parseInt(b.getAttribute('data-hp-score') || '0');
+    return sb - sa;
+  });
+  entries.forEach(function(e) { list.appendChild(e); });
+}
+
+function sortAndTrimSecondaryResults() {
+  sortSeedResultsBySpacing();
+  // Trim to returnCount — remove lower-scoring excess pool seeds from DOM
+  var rc = Math.max(2, parseInt(document.getElementById('s-maxseeds') ?
+    document.getElementById('s-maxseeds').value : '5') || 5);
+  var list = document.getElementById('multi-result-list');
+  while (list.children.length > rc) list.removeChild(list.lastChild);
+  // Update label
+  var shown = list.children.length;
+  document.getElementById('search-result-label').textContent =
+    'Found ' + shown + ' seed' + (shown > 1 ? 's' : '') + ' (ranked by spacing score)';
 }
 
 function showSearchError(msg) {
@@ -1572,8 +1713,9 @@ function generateOrder() {
   list.innerHTML = '';
   for (var pos = 0; pos < order.length; pos++) {
     var div = document.createElement('div');
-    div.className = 'seq-item';
-    div.innerHTML = '<span class="num">'+(pos+1)+'.</span> '+levelLabel(order[pos]);
+    var isHpGen = HP_INDEX_SET[order[pos]] && (rushKey === '96');
+    div.className = 'seq-item' + (isHpGen ? ' hp-row' : '');
+    div.innerHTML = '<span class="num">'+(pos+1)+'.</span> ' + (isHpGen ? labelWithHeart(levelLabel(order[pos])) : levelLabel(order[pos]));
     list.appendChild(div);
   }
   document.getElementById('gen-result').classList.add('visible');
@@ -2192,16 +2334,27 @@ var RT_ALIASES = {
 function onRtRushChange() {
   rtRush = document.getElementById('rt-rush').value;
   rtClearResults(); rtClearError();
-  if (rtMode==='manual') rtBuildManualRows(); else rtHideLevels();
+  if (rtMode==='manual') rtBuildManualRows();
+  else if (rtMode==='standard') rtLoadStandardOrder();
+  else rtHideLevels();
 }
 
 function rtSetMode(mode) {
   rtMode = mode;
   document.getElementById('rt-mode-seed-btn').classList.toggle('active', mode==='seed');
   document.getElementById('rt-mode-manual-btn').classList.toggle('active', mode==='manual');
+  document.getElementById('rt-mode-standard-btn').classList.toggle('active', mode==='standard');
   document.getElementById('rt-seed-panel').style.display = mode==='seed'?'block':'none';
   rtClearResults(); rtClearError();
-  if (mode==='manual') rtBuildManualRows(); else rtHideLevels();
+  if (mode==='manual') rtBuildManualRows();
+  else if (mode==='standard') rtLoadStandardOrder();
+  else rtHideLevels();
+}
+
+function rtLoadStandardOrder() {
+  var levels = RUSH_LEVELS[rtRush];
+  // Standard order is just the levels array in their natural index order
+  rtBuildSeedRows(levels.slice());
 }
 
 function rtHideLevels() {
@@ -2502,7 +2655,7 @@ var stdLevelNames = [];
 // Medal view mode per output id: 0=off, 1=community medals, 2=standard medals
 var medalViewMode = {};
 
-// Embedded fallback medal data (as of v3.7.3 — updated from NeonLite communitymedals.json)
+// Embedded fallback medal data (as of v3.8.8 — updated from NeonLite communitymedals.json)
 var MEDAL_FALLBACK = {
   "TUT_MOVEMENT": [18199999,17899999,17699999,17599999,17549999],
   "TUT_SHOOTINGRANGE": [7249999,6799999,6139999,5799999,5599999],
@@ -2826,6 +2979,181 @@ function resetMedalViews(ids) {
     if (div) { div.style.display='none'; div.innerHTML=''; }
     if (btn) { btn.classList.remove('active','medal-on'); btn.classList.add('medal-off'); btn.textContent='MEDALS OFF'; }
   });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// HELL RUSH MODE
+// ════════════════════════════════════════════════════════════════════════════
+
+// Health pack stage names (White/Mikey only, unweighted)
+var HP_STAGES = [
+  'Glass Port','Jumper','The Clocktower','Apartment','Fuse',
+  'Estate','Ricochet','Fortress','The Third Temple','Congregation','Absolution'
+];
+
+// Build index set at runtime (populated when LEVEL_NAMES is set to 96-level list)
+var HP_INDEX_SET = {};  // levelIdx -> true
+var HP_INDEX_LIST = []; // sorted list of level indices that are HP stages
+
+function buildHpIndexSet() {
+  HP_INDEX_SET = {};
+  HP_INDEX_LIST = [];
+  var names = RUSH_LEVELS['96'];
+  for (var i = 0; i < names.length; i++) {
+    if (HP_STAGES.indexOf(names[i]) !== -1) {
+      HP_INDEX_SET[i] = true;
+      HP_INDEX_LIST.push(i);
+    }
+  }
+}
+buildHpIndexSet();
+
+// Score a seed order for health pack spacing (0-100, 100 = perfectly even)
+// order: array of level indices (0-indexed) in play order
+function scoreHpSpacing(order) {
+  // Find 1-indexed positions of HP stages in play order
+  var positions = []; // 1-indexed
+  for (var pos = 0; pos < order.length; pos++) {
+    if (HP_INDEX_SET[order[pos]]) positions.push(pos + 1);
+  }
+  if (positions.length === 0) return 0;
+
+  // Compute gaps between consecutive HP stages, including opening gap from start
+  // Exclude trailing gap (last HP to end) to avoid penalising late-game bosses
+  var gaps = [];
+  var prev = 0;
+  for (var i = 0; i < positions.length; i++) {
+    gaps.push(positions[i] - prev);
+    prev = positions[i];
+  }
+
+  // Ideal gap = last HP position / hp count (even spacing up to last HP)
+  var idealGap = positions[positions.length - 1] / positions.length;
+
+  // Soft penalty for HP stages appearing very early (positions 1-3)
+  var earlyPenalty = 0;
+  for (var i = 0; i < positions.length; i++) {
+    if (positions[i] <= 3) earlyPenalty += (4 - positions[i]) * 5;
+  }
+
+  // Standard deviation of gaps
+  var mean = 0;
+  for (var i = 0; i < gaps.length; i++) mean += gaps[i];
+  mean /= gaps.length;
+  var variance = 0;
+  for (var i = 0; i < gaps.length; i++) variance += (gaps[i] - mean) * (gaps[i] - mean);
+  var stdDev = Math.sqrt(variance / gaps.length);
+
+  // Penalise consecutive HP stages (any two within 3 positions of each other)
+  var consecutivePenalty = 0;
+  for (var i = 1; i < positions.length; i++) {
+    var gap = positions[i] - positions[i-1];
+    if (gap <= 3) consecutivePenalty += (4 - gap) * 15;
+    else if (gap <= 5) consecutivePenalty += (6 - gap) * 5;
+  }
+
+  // Penalise if HP stages are crammed into a small portion of the run
+  var spreadPenalty = 0;
+  var lastHpPos = positions[positions.length - 1];
+  if (lastHpPos < 70) spreadPenalty = Math.round((70 - lastHpPos) * 2);
+
+  // Normalise: stdDev of 0 = score 100, stdDev of idealGap = score ~0
+  var score = Math.max(0, Math.round(100 - (stdDev / idealGap) * 100) - earlyPenalty - spreadPenalty - consecutivePenalty);
+  return Math.min(100, Math.max(0, score));
+}
+
+var hellModeEnabled = false;
+var hellTopN = [];
+var hellTargetSet = {}, hellForceIdx = -1, hellAvoidSet = {}, hellAvoidDepth = 0;           // rolling top-N buffer for standalone mode
+var hellLastRender = 0;      // timestamp of last re-render (throttle)
+var hellWarningDismissed = (localStorage.getItem('rsf_hell_warned') === '1');
+
+function toggleHellMode() {
+  hellModeEnabled = document.getElementById('hell-checkbox').checked;
+  var panel = document.getElementById('hell-panel');
+  panel.style.display = hellModeEnabled ? 'block' : 'none';
+  if (hellModeEnabled && !hellWarningDismissed) {
+    document.getElementById('hell-warning').style.display = 'block';
+  }
+  // Hell Rush only applies to White/Mikey — lock rush selector if needed
+  if (hellModeEnabled) {
+    document.getElementById('s-rush').value = '96';
+    onRushChange('s');
+  }
+  onHellModeChange();
+  updateHellHpWarning();
+}
+
+function hellRenderTopN() {
+  // Throttle re-render to at most every 500ms to avoid thrashing
+  var now = Date.now();
+  if (now - hellLastRender < 500 && hellTopN.length > 0) return;
+  hellLastRender = now;
+  var list = document.getElementById('multi-result-list');
+  list.innerHTML = '';
+  for (var i = 0; i < hellTopN.length; i++) {
+    addSeedResult(hellTopN[i].seed, hellTopN[i].order, hellTargetSet, i + 1, hellForceIdx, hellAvoidSet, hellAvoidDepth);
+  }
+  document.getElementById('search-result-label').textContent =
+    'Best ' + hellTopN.length + ' seed' + (hellTopN.length > 1 ? 's' : '') + ' so far';
+  document.getElementById('search-result').classList.add('visible');
+}
+
+function onHellModeChange() {
+  var isStandalone = getHellSpacingMode() === 'standalone';
+  document.getElementById('hell-minscore-wrap').style.display = isStandalone ? 'block' : 'none';
+  document.getElementById('hell-pool-wrap').style.display     = isStandalone ? 'none' : 'block';
+  updateHellHpWarning();
+}
+
+function updateHellHpWarning() {
+  var warn = document.getElementById('hell-hp-warning');
+  if (!warn || !hellModeEnabled || getHellSpacingMode() !== 'secondary') { if (warn) warn.style.display='none'; return; }
+  var rawInput = document.getElementById('s-levels').value;
+  if (!rawInput.trim()) { warn.style.display='none'; return; }
+  // Check if any desired level is a HP stage
+  var parts = rawInput.split(',');
+  var hasHp = false;
+  for (var i=0; i<parts.length; i++) {
+    var q = parts[i].trim().toLowerCase();
+    if (!q) continue;
+    for (var j=0; j<HP_STAGES.length; j++) {
+      if (HP_STAGES[j].toLowerCase().indexOf(q)!==-1 || q.indexOf(HP_STAGES[j].toLowerCase())!==-1) {
+        hasHp = true; break;
+      }
+    }
+    if (hasHp) break;
+  }
+  warn.style.display = hasHp ? 'block' : 'none';
+}
+
+function onMinScoreToggle() {
+  var enabled = document.getElementById('hell-minscore-checkbox').checked;
+  document.getElementById('hell-minscore-inner').style.display = enabled ? 'block' : 'none';
+}
+
+function dismissHellWarning() {
+  document.getElementById('hell-warning').style.display = 'none';
+  hellWarningDismissed = true;
+  try { localStorage.setItem('rsf_hell_warned', '1'); } catch(e) {}
+}
+
+function getHellSpacingMode() {
+  return document.getElementById('hell-standalone') && document.getElementById('hell-standalone').checked
+    ? 'standalone' : 'secondary';
+}
+
+// Add heart indicator to a level name if it's a HP stage
+function labelWithHeart(name) {
+  if (HP_STAGES.indexOf(name) !== -1) {
+    return name + '<span class="hp-heart">&#9829;</span>';
+  }
+  return name;
+}
+
+// Score label HTML
+function hpScoreLabel(score) {
+  return '<span class="hp-score">&#9829; ' + score + '<span class="hp-tooltip">SPACING SCORE ' + score + '/100</span></span>';
 }
 </script>
 </body>
